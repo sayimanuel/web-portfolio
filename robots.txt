@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://helloimanuel.com/sitemap.xml

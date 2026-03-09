@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Primary SEO -->
+  <title>All Projects — Imanuel | Frontend Developer Jakarta</title>
+  <meta name="description" content="Kumpulan proyek web development dan UI/UX design oleh Imanuel, Frontend Developer Jakarta. Meliputi web app, sistem CRUD, dan desain antarmuka digital.">
+  <meta name="keywords" content="proyek frontend developer jakarta, web development jakarta, portfolio web design jakarta, ui ux project jakarta">
+  <meta name="author" content="Imanuel">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://helloimanuel.com/projects.html">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://helloimanuel.com/projects.html">
+  <meta property="og:title" content="All Projects — Imanuel | Frontend Developer Jakarta">
+  <meta property="og:description" content="Kumpulan proyek web development dan UI/UX design oleh Imanuel, Frontend Developer Jakarta.">
+  <meta property="og:image" content="https://helloimanuel.com/assets/og-image.jpg">
+  <meta property="og:locale" content="id_ID">
+  <meta property="og:site_name" content="Imanuel Portfolio">
+
+  <!-- Favicon -->
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Jaldi:wght@400;700&family=Quantico:wght@400;700&family=Platypi:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ── Floating Nav ── -->
+  <button class="nav-toggle" id="navToggle" aria-label="Open navigation menu" aria-expanded="false">
+    <svg class="icon-menu" width="18" height="13" viewBox="0 0 18 13" fill="none"><line x1="0" y1="1" x2="18" y2="1" stroke="#E8F55F" stroke-width="1.8" stroke-linecap="round"/><line x1="0" y1="6.5" x2="18" y2="6.5" stroke="#E8F55F" stroke-width="1.8" stroke-linecap="round"/><line x1="0" y1="12" x2="18" y2="12" stroke="#E8F55F" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <svg class="icon-close" width="16" height="16" viewBox="0 0 16 16" fill="none"><line x1="1" y1="1" x2="15" y2="15" stroke="#E8F55F" stroke-width="1.8" stroke-linecap="round"/><line x1="15" y1="1" x2="1" y2="15" stroke="#E8F55F" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+
+  <nav class="nav-panel" id="navPanel" aria-label="Site navigation">
+    <a href="index.html" class="nav-link">Home</a>
+    <a href="index.html#experience" class="nav-link">Experience</a>
+    <a href="index.html#contact" class="nav-link">Contact</a>
+    <div class="nav-divider"></div>
+    <div class="filter-search-wrap">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="rgba(255,255,255,0.5)" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input type="text" id="filterSearch" class="filter-search" placeholder="Search projects...">
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Time</span>
+      <div class="filter-pills" data-filter="time">
+        <button class="filter-pill active" data-val="all">All</button>
+        <button class="filter-pill" data-val="2025">2025</button>
+        <button class="filter-pill" data-val="2026">2026</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Category</span>
+      <div class="filter-pills" data-filter="cat">
+        <button class="filter-pill active" data-val="all">All</button>
+        <button class="filter-pill" data-val="web-dev">Web Dev</button>
+        <button class="filter-pill" data-val="web-design">UI Design</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <span class="filter-label">Type</span>
+      <div class="filter-pills" data-filter="type">
+        <button class="filter-pill active" data-val="all">All</button>
+        <button class="filter-pill" data-val="education">Education</button>
+        <button class="filter-pill" data-val="company">Company</button>
+        <button class="filter-pill" data-val="private">Private</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== ALL PROJECTS ===== -->
+  <div class="allprojects-wrapper">
+    <section class="projects allprojects">
+
+      <!-- Header -->
+      <div class="projects-header">
+        <h2 class="section-title white">All Projects</h2>
+      </div>
+
+    </section>
+  </div>
+
+  <!-- ===== CONTACT ===== -->
+  <section class="contact" id="contact">
+    <div class="contact-content">
+      <h2 class="section-title white">Let's Work Together</h2>
+      <p class="contact-sub">AVAILABLE FOR COLLABORATION AND PROJECT-BASED WORK.</p>
+      <a href="mailto:helloimanuel@yahoo.com" class="email-btn">
+        HELLOIMANUEL@YAHOO.COM
+        <img src="assets/arrow.svg" alt="" width="23" height="23">
+      </a>
+    </div>
+    <footer class="footer">
+      <p>&copy; 2026 Hello Imanuel. All Rights Reserved.</p>
+      <div class="footer-links">
+        <a href="#">Linkedin</a>
+        <a href="#">Instagram</a>
+        <a href="#">Whatsapp</a>
+      </div>
+    </footer>
+  </section>
+
+  <!-- Column orbs -->
+  <div class="grid-orbs" aria-hidden="true">
+    <span class="grid-orb" style="--col:2;  --dur:3.8s; --delay:0s;   --size:8px"></span>
+    <span class="grid-orb" style="--col:5;  --dur:5.2s; --delay:1.4s; --size:10px"></span>
+    <span class="grid-orb" style="--col:9;  --dur:4.1s; --delay:0.7s; --size:7px"></span>
+    <span class="grid-orb" style="--col:14; --dur:3.5s; --delay:2.2s; --size:11px"></span>
+    <span class="grid-orb" style="--col:18; --dur:4.9s; --delay:0.3s; --size:8px"></span>
+    <span class="grid-orb" style="--col:22; --dur:3.2s; --delay:1.8s; --size:9px"></span>
+  </div>
+
+<script src="api.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
