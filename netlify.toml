@@ -3,6 +3,9 @@
   functions = "api/netlify/functions"
   command = "npm install"
 
+[functions]
+  timeout = 26
+
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api"

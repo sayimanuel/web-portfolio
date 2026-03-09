@@ -29,7 +29,10 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok' }));
 let isConnected = false;
 async function connectDB() {
   if (isConnected) return;
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI, {
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 20000,
+  });
   isConnected = true;
   console.log('✓ MongoDB connected');
 }
