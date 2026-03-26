@@ -13,6 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=Jaldi:wght@400;700&family=Quantico:wght@400;700&family=Platypi:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script>(function(){if(localStorage.getItem('porto_theme')==='light')document.documentElement.classList.add('light');})()</script>
   <link rel="stylesheet" href="case.css">
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-98581M4834"></script>
@@ -26,6 +27,12 @@
   <svg class="icon-close" width="16" height="16" viewBox="0 0 16 16" fill="none"><line x1="1" y1="1" x2="15" y2="15" stroke="#E8F55F" stroke-width="1.8" stroke-linecap="round"/><line x1="15" y1="1" x2="1" y2="15" stroke="#E8F55F" stroke-width="1.8" stroke-linecap="round"/></svg>
 </button>
 <nav class="nav-panel" id="navPanel" aria-label="Site navigation">
+  <button class="nav-theme-toggle" id="navThemeToggle" aria-label="Toggle theme">
+    <svg class="theme-icon-sun" width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="3" stroke="currentColor" stroke-width="1.4"/><path d="M7.5 1v1.5M7.5 12.5V14M1 7.5h1.5M12.5 7.5H14M3 3l1 1M11 11l1 1M11 3l-1 1M4 11l-1 1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    <svg class="theme-icon-moon" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M12.5 9A6 6 0 0 1 5 1.5a6 6 0 1 0 7.5 7.5z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+    <span class="nav-theme-label">Light Mode</span>
+  </button>
+  <div class="nav-divider" style="margin:4px 0 8px"></div>
   <a href="index.html" class="nav-link">Home</a>
   <a href="projects.html" class="nav-link">Projects</a>
   <a href="index.html#skills" class="nav-link">Skills &amp; Tools</a>
@@ -107,9 +114,6 @@
       <h2 class="case-section-title">System Architecture</h2>
       <div class="case-arch-card glass reveal">
         <img id="archImg" src="" alt="System Architecture" style="display:none">
-        <div class="arch-placeholder" id="archPlaceholder">
-          <div class="arch-diagram" id="archDiagram"></div>
-        </div>
         <p class="arch-desc" id="archDesc"></p>
       </div>
     </section>
@@ -187,5 +191,6 @@
 <script src="api.js"></script>
 <script src="script.js"></script>
 <script src="case.js"></script>
+<script src="tracker.js"></script>
 </body>
 </html>

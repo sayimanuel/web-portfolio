@@ -87,7 +87,7 @@
 
   // ── Architecture ──────────────────────────────────────────────────────────
   function buildArchitecture(cs) {
-    if (!cs.architectureImage && !cs.architectureDesc && !cs.stack?.length) {
+    if (!cs.architectureImage && !cs.architectureDesc) {
       hide('sec-arch');
       return;
     }
@@ -96,8 +96,7 @@
       if (img) { img.src = cs.architectureImage; img.style.display = 'block'; }
       hide('archPlaceholder');
     } else {
-      // Auto-generate a simple node diagram from stack
-      buildArchDiagram(cs.stack || []);
+      hide('archPlaceholder');
     }
     if (cs.architectureDesc) {
       setText('archDesc', cs.architectureDesc);
@@ -105,34 +104,6 @@
       const descEl = document.getElementById('archDesc');
       if (descEl) descEl.style.display = 'none';
     }
-  }
-
-  function buildArchDiagram(stack) {
-    const container = document.getElementById('archDiagram');
-    if (!container || !stack.length) {
-      const placeholder = document.getElementById('archPlaceholder');
-      if (placeholder) placeholder.innerHTML = '<p style="color:rgba(255,255,255,0.25);font-size:14px">No architecture diagram provided.</p>';
-      return;
-    }
-
-    // Simple left-to-right: Client → Frontend → Backend → Database
-    const layers = [
-      { label: 'Client',    node: 'Browser', type: 'secondary' },
-      { label: 'Frontend',  node: stack[0] || 'Frontend', type: 'primary' },
-      { label: 'Backend',   node: stack[1] || 'API', type: 'primary' },
-      { label: 'Database',  node: stack[2] || 'Database', type: 'secondary' },
-    ];
-
-    container.innerHTML = layers.map((l, i) => `
-      ${i > 0 ? `<div class="arch-arrow">
-        <svg width="28" height="14" viewBox="0 0 28 14" fill="none">
-          <path d="M1 7H24M24 7L18 2M24 7L18 12" stroke="rgba(255,255,255,0.2)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>` : ''}
-      <div class="arch-node">
-        <div class="arch-node-box ${l.type}">${l.node}</div>
-        <span class="arch-node-label">${l.label}</span>
-      </div>`).join('');
   }
 
   // ── UI Gallery ────────────────────────────────────────────────────────────
@@ -362,7 +333,7 @@
       const cs = p.caseStudy || {};
 
       populateHero(p, cs);
-      buildOverviewCards(cs);
+      hide('sec-overview');
       buildProblems(cs.problems);
       buildGoals(cs.goals);
       buildFeatures(cs.features);
@@ -384,10 +355,53 @@
         if (typeof observer !== 'undefined') observer.observe(el);
       });
 
+      // Related projects (same category, exclude current)
+      loadRelated(id, p.category);
+
     } catch (err) {
       console.warn('Could not load case study:', err.message);
       setText('caseTitle', 'Could not load project');
     }
+  }
+
+  // ── Related Projects ─────────────────────────────────────────────────────
+  async function loadRelated(currentId, category) {
+    try {
+      const all = await fetch(`${BASE_URL}/projects`).then(r => r.ok ? r.json() : []);
+      // Same category first, otherwise any other project; exclude current
+      const related = all
+        .filter(p => String(p._id) !== String(currentId))
+        .sort((a, b) => (a.category === category ? -1 : 1) - (b.category === category ? -1 : 1))
+        .slice(0, 3);
+      if (!related.length) return;
+
+      const section = document.createElement('section');
+      section.className = 'case-section case-related reveal';
+      section.innerHTML = `
+        <h2 class="case-section-title">Related Projects</h2>
+        <div class="related-grid"></div>`;
+
+      const grid = section.querySelector('.related-grid');
+      related.forEach(p => {
+        const imgStyle = p.image ? `style="background-image:url('${p.image}')"` : '';
+        const card = document.createElement('a');
+        card.className = 'related-card glass';
+        card.href = `case.html?id=${p._id}`;
+        card.innerHTML = `
+          <div class="related-img${p.image ? '' : ' project-img--empty'}" ${imgStyle}></div>
+          <p class="related-title"></p>
+          <span class="related-cat"></span>`;
+        card.querySelector('.related-title').textContent = p.title;
+        card.querySelector('.related-cat').textContent = p.category || '';
+        grid.appendChild(card);
+      });
+
+      // Insert before the CTA section
+      const cta = document.getElementById('sec-cta');
+      cta ? cta.before(section) : document.querySelector('.case-body-card').appendChild(section);
+
+      if (typeof observer !== 'undefined') observer.observe(section);
+    } catch (e) {}
   }
 
   document.addEventListener('DOMContentLoaded', loadCase);

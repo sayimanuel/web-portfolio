@@ -21,6 +21,8 @@ app.use('/api/testimonials', require('./routes/testimonials'));
 app.use('/api/experience',   require('./routes/experience'));
 app.use('/api/skills',       require('./routes/skills'));
 app.use('/api/profile',      require('./routes/profile'));
+app.use('/api/seo',          require('./routes/seo'));
+app.use('/api/analytics',    require('./routes/analytics'));
 
 // Health check
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));

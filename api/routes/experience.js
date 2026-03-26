@@ -17,6 +17,26 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// POST /api/experience/sync — auto-add from projects (no duplicates)
+router.post('/sync', auth, async (req, res) => {
+  try {
+    const incoming = req.body; // [{ role, company, period }]
+    if (!Array.isArray(incoming) || !incoming.length) return res.json({ added: 0 });
+
+    const existing = await Experience.find({}, 'role company');
+    const existingKeys = new Set(existing.map(e => `${e.role.toLowerCase()}|${e.company.toLowerCase()}`));
+
+    const toAdd = incoming.filter(e =>
+      e.role && e.company &&
+      !existingKeys.has(`${e.role.toLowerCase()}|${e.company.toLowerCase()}`)
+    );
+    if (!toAdd.length) return res.json({ added: 0 });
+
+    await Experience.insertMany(toAdd);
+    res.json({ added: toAdd.length });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
 router.put('/:id', auth, async (req, res) => {
   try {
     const item = await Experience.findByIdAndUpdate(req.params.id, req.body, { new: true });

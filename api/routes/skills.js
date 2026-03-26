@@ -18,6 +18,24 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(400).json({ error: err.message }); }
 });
 
+// POST /api/skills/sync  — auto-add skills from project stack (no duplicates)
+router.post('/sync', auth, async (req, res) => {
+  try {
+    const incoming = req.body; // [{ name, category }]
+    if (!Array.isArray(incoming) || !incoming.length) return res.json({ added: 0 });
+
+    // Fetch existing skill names (lowercase for comparison)
+    const existing = await Skill.find({}, 'name');
+    const existingNames = new Set(existing.map(s => s.name.toLowerCase()));
+
+    const toAdd = incoming.filter(s => s.name && !existingNames.has(s.name.toLowerCase()));
+    if (!toAdd.length) return res.json({ added: 0 });
+
+    await Skill.insertMany(toAdd.map(s => ({ name: s.name, category: s.category })));
+    res.json({ added: toAdd.length, names: toAdd.map(s => s.name) });
+  } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
 router.put('/:id', auth, async (req, res) => {
   try {
     const item = await Skill.findByIdAndUpdate(req.params.id, req.body, { new: true });

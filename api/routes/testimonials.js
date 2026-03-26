@@ -16,9 +16,9 @@ router.get('/', async (req, res) => {
 // POST /api/testimonials  — public (pending approval)
 router.post('/', async (req, res) => {
   try {
-    const { name, role, quote } = req.body;
+    const { name, role, quote, projectId, projectTitle } = req.body;
     if (!name || !quote) return res.status(400).json({ error: 'Name and quote required' });
-    const testi = new Testimonial({ name, role, quote, approved: false });
+    const testi = new Testimonial({ name, role, quote, projectId: projectId || '', projectTitle: projectTitle || '', approved: false });
     await testi.save();
     res.status(201).json({ message: 'Review submitted, pending approval. Thank you!' });
   } catch (err) {

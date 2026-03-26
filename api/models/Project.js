@@ -23,6 +23,7 @@ const projectSchema = new mongoose.Schema({
   caseStudy: {
     stack:    [String],
     role:     { type: String, default: '' },
+    client:   { type: String, default: '' },   // company/client name for experience sync
     duration: { type: String, default: '' },
     platform: { type: String, default: '' },
 

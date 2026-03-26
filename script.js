@@ -1,3 +1,25 @@
+// Theme toggle
+(function () {
+  const KEY = 'porto_theme';
+  const btn  = document.getElementById('navThemeToggle');
+  if (!btn) return;
+
+  function applyTheme(theme) {
+    document.documentElement.classList.toggle('light', theme === 'light');
+    const label = btn.querySelector('.nav-theme-label');
+    if (label) label.textContent = theme === 'light' ? 'Dark Mode' : 'Light Mode';
+    btn.setAttribute('aria-pressed', theme === 'light');
+  }
+
+  applyTheme(localStorage.getItem(KEY) || 'dark');
+
+  btn.addEventListener('click', () => {
+    const next = document.documentElement.classList.contains('light') ? 'dark' : 'light';
+    localStorage.setItem(KEY, next);
+    applyTheme(next);
+  });
+})();
+
 // Floating nav menu
 (function () {
   const btn   = document.getElementById('navToggle');
@@ -228,8 +250,90 @@ if (aboutText) {
   const form     = document.getElementById('reviewForm');
   if (!addBtn || !modal) return;
 
-  function openModal()  { modal.classList.add('open'); }
-  function closeModal() { modal.classList.remove('open'); }
+  // ── Searchable project picker ──
+  let allProjects    = [];
+  let projectsLoaded = false;
+
+  const rssInput    = document.getElementById('rssInput');
+  const rssClear    = document.getElementById('rssClear');
+  const rssDropdown = document.getElementById('rssDropdown');
+  const rssControl  = document.getElementById('rssControl');
+
+  function rssRender(query) {
+    const q = (query || '').toLowerCase();
+    const filtered = allProjects.filter(p => !q || p.title.toLowerCase().includes(q));
+    rssDropdown.innerHTML = '';
+    // "none" option
+    const none = document.createElement('div');
+    none.className = 'rss-option';
+    none.dataset.id = '';
+    none.dataset.title = '';
+    none.textContent = '— Tanpa project —';
+    none.addEventListener('mousedown', () => rssSelect('', ''));
+    rssDropdown.appendChild(none);
+    if (!filtered.length) {
+      const empty = document.createElement('div');
+      empty.className = 'rss-option rss-option--empty';
+      empty.textContent = 'Project tidak ditemukan';
+      rssDropdown.appendChild(empty);
+    } else {
+      filtered.forEach(p => {
+        const opt = document.createElement('div');
+        opt.className = 'rss-option';
+        opt.dataset.id    = p._id;
+        opt.dataset.title = p.title;
+        opt.textContent   = p.title;
+        opt.addEventListener('mousedown', () => rssSelect(p._id, p.title));
+        rssDropdown.appendChild(opt);
+      });
+    }
+  }
+
+  function rssSelect(id, title) {
+    document.getElementById('reviewProjectId').value = id;
+    rssInput.value = title;
+    rssClear.style.display = id ? 'flex' : 'none';
+    rssClose();
+  }
+
+  function rssOpen() {
+    rssRender(rssInput.value);
+    rssDropdown.style.display = 'block';
+    rssControl.classList.add('open');
+    rssInput.setAttribute('aria-expanded', 'true');
+  }
+
+  function rssClose() {
+    rssDropdown.style.display = 'none';
+    rssControl.classList.remove('open');
+    rssInput.setAttribute('aria-expanded', 'false');
+  }
+
+  rssInput.addEventListener('focus', rssOpen);
+  rssInput.addEventListener('input', () => { rssRender(rssInput.value); rssDropdown.style.display = 'block'; });
+  rssInput.addEventListener('blur',  () => setTimeout(rssClose, 150));
+  rssClear.addEventListener('click', () => { rssSelect('', ''); rssInput.focus(); });
+  rssControl.querySelector('.rss-chevron').addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    rssDropdown.style.display === 'none' ? rssOpen() : rssClose();
+  });
+
+  async function loadProjectPicker() {
+    if (projectsLoaded) return;
+    try {
+      allProjects = window.portoApi ? await window.portoApi.getProjectsForPicker() : [];
+      projectsLoaded = true;
+    } catch { allProjects = []; }
+  }
+
+  function openModal()  {
+    modal.classList.add('open');
+    loadProjectPicker();
+  }
+  function closeModal() {
+    modal.classList.remove('open');
+    rssSelect('', '');
+  }
 
   addBtn.addEventListener('click', openModal);
   closeBtn.addEventListener('click', closeModal);
@@ -250,7 +354,9 @@ if (aboutText) {
     try {
       if (window.portoApi) {
         // API mode: POST to backend
-        await window.portoApi.submitReview(name, role, quote);
+        const projectId    = document.getElementById('reviewProjectId')?.value || '';
+        const projectTitle = document.getElementById('rssInput')?.value.trim() || '';
+        await window.portoApi.submitReview(name, role, quote, projectId, projectTitle);
         submitBtn.textContent = 'Sent! Thank you.';
       } else {
         // Fallback: add card to DOM directly (no backend)
