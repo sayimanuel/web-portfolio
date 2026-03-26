@@ -1691,6 +1691,13 @@ html.light .hero {
 }
 html.light .hero-bg-text span {
   -webkit-text-stroke-color: rgba(75,129,255,0.22);
+  font-size: 0;
+}
+html.light .hero-bg-text span::after {
+  content: attr(data-ja);
+  font-size: clamp(90px, 22vw, 180px);
+  font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  letter-spacing: -0.02em;
 }
 html.light .hero-card {
   background: rgba(255,255,255,0.75);
