@@ -1763,6 +1763,7 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
   .hero-photo {
     flex: 1;
     min-height: 0;
+    max-height: 260px;
     margin-top: 0;
     margin-bottom: 0;
   }
@@ -1825,10 +1826,11 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
   }
   .hero-card {
     width: calc(100vw - 32px);
-    height: 500px;
+    height: 460px;
     padding: 18px;
-    gap: 18px;
+    gap: 16px;
   }
+  .hero-photo   { max-height: 210px; }
   .hero-label   { font-size: 17px; height: 24px; overflow: hidden; }
   .hero-tagline { font-size: 15px; line-height: 22px; height: 44px; overflow: hidden; }
 
