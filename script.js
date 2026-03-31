@@ -393,6 +393,27 @@ tabs.forEach(tab => {
   const identity  = document.getElementById('msgIdentity');
   if (!toggle || !popup) return;
 
+  // Hide button on mobile when hero section (or footer) is in view
+  const heroEl   = document.getElementById('home');
+  const footerEl = document.querySelector('footer') || document.querySelector('.contact');
+  function updateMsgVisibility() {
+    if (window.innerWidth > 768) { toggle.classList.remove('msg-toggle--hidden'); return; }
+    const vMid = window.scrollY + window.innerHeight / 2;
+    let hide = false;
+    if (heroEl) {
+      const top = heroEl.offsetTop, bot = top + heroEl.offsetHeight;
+      if (vMid >= top && vMid <= bot) hide = true;
+    }
+    if (footerEl) {
+      const top = footerEl.offsetTop, bot = top + footerEl.offsetHeight;
+      if (vMid >= top && vMid <= bot) hide = true;
+    }
+    toggle.classList.toggle('msg-toggle--hidden', hide);
+  }
+  window.addEventListener('scroll', updateMsgVisibility, { passive: true });
+  window.addEventListener('resize', updateMsgVisibility, { passive: true });
+  updateMsgVisibility();
+
   const API = (() => {
     const isLocal = ['localhost','127.0.0.1'].includes(location.hostname);
     return isLocal ? 'http://localhost:5500/api' : '/api';

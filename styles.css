@@ -151,7 +151,7 @@ body {
   letter-spacing: 0.01em;
   cursor: pointer;
   z-index: 101;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, opacity 0.3s, transform 0.3s;
 }
 .msg-toggle:hover,
 .msg-toggle.active {
@@ -160,6 +160,7 @@ body {
   color: #fff;
 }
 .msg-toggle svg { flex-shrink: 0; color: #E8F55F; }
+.msg-toggle--hidden { opacity: 0; pointer-events: none; transform: translateY(8px); }
 
 /* ── Message popup ── */
 .msg-popup {
@@ -769,9 +770,9 @@ html.light .msg-qa-link:hover { color: #172851; }
 
 /* ── Experience thumbnail (left) ── */
 .exp-thumb {
-  width: 60px;
-  height: 60px;
-  min-width: 60px;
+  width: 70px;
+  min-width: 70px;
+  align-self: stretch;   /* stretch to full row height */
   border-radius: 14px;
   object-fit: cover;
   background: rgba(255,255,255,0.06);
@@ -1748,21 +1749,21 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
     line-height: 1.05;
   }
 
-  /* Hero card — fluid width, auto height */
+  /* Hero card — fluid width, fixed height so typewriter doesn't resize card */
   .hero-card {
     width: min(420px, calc(100vw - 40px));
-    height: auto;
+    height: 560px;
     padding: 20px;
     gap: 24px;
   }
   .hero-photo {
-    flex: none;
-    height: 220px;
+    flex: 1;
+    min-height: 0;
     margin-top: 0;
     margin-bottom: 0;
   }
-  .hero-label   { font-size: 20px; line-height: 1.3; height: auto; }
-  .hero-tagline { font-size: 18px; line-height: 26px; height: auto; }
+  .hero-label   { font-size: 20px; line-height: 1.3; height: 28px; overflow: hidden; }
+  .hero-tagline { font-size: 18px; line-height: 26px; height: 52px; overflow: hidden; }
   .hero-nav     { gap: 12px; }
   .hero-nav a   { font-size: 14px; }
 
@@ -1791,10 +1792,10 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
 
   /* Experience */
   .experience { padding: 60px 24px; }
-  .exp-item   { flex-wrap: wrap; gap: 8px 12px; padding: 16px 0; }
-  .exp-thumb  { width: 44px; height: 44px; min-width: 44px; border-radius: 10px; }
-  .exp-role   { flex: 1; min-width: 140px; }
-  .exp-right  { text-align: left; width: 100%; padding-left: 56px; }
+  .exp-item   { flex-wrap: nowrap; align-items: stretch; gap: 12px; padding: 16px 0; }
+  .exp-thumb  { width: 54px; min-width: 54px; border-radius: 10px; align-self: stretch; }
+  .exp-role   { flex: 1; }
+  .exp-right  { text-align: left; }
   .exp-role, .exp-company { font-size: 20px; line-height: 28px; }
   .exp-period { font-size: 15px; line-height: 22px; }
 
@@ -1822,12 +1823,12 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
   }
   .hero-card {
     width: calc(100vw - 32px);
+    height: 500px;
     padding: 18px;
     gap: 18px;
   }
-  .hero-photo   { height: 180px; }
-  .hero-label   { font-size: 17px; }
-  .hero-tagline { font-size: 15px; line-height: 22px; }
+  .hero-label   { font-size: 17px; height: 24px; overflow: hidden; }
+  .hero-tagline { font-size: 15px; line-height: 22px; height: 44px; overflow: hidden; }
 
   /* Titles */
   .section-title   { font-size: 22px; line-height: 28px; }
