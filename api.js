@@ -210,16 +210,53 @@ async function getProjectsForPicker() {
 
 // ── EXPERIENCE ──
 
+// Default icon SVG for experience with no image
+const EXP_DEFAULT_ICON = `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="8" width="20" height="14" rx="2.5" stroke="currentColor" stroke-width="1.6"/>
+  <path d="M9 8V7a5 5 0 0 1 10 0v1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M4 14h20" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
+</svg>`;
+
 async function loadExperience() {
   const list = document.querySelector('.exp-list');
   if (!list) return;
   try {
-    const items = await get('/experience');
+    // Fetch both in parallel
+    const [items, projects] = await Promise.all([
+      get('/experience'),
+      get('/projects').catch(() => []),
+    ]);
+
+    // Build lookup: lowercase company/title → first project image
+    const projImgMap = {};
+    projects.forEach(p => {
+      const img = p.images?.[0]?.url || p.image || '';
+      if (!img) return;
+      const key = (p.title || '').toLowerCase().trim();
+      if (key && !projImgMap[key]) projImgMap[key] = img;
+    });
+
     list.innerHTML = '';
     items.forEach(item => {
+      // Priority: manual imageUrl → matched project image → default icon
+      const companyKey = (item.company || '').toLowerCase().trim();
+      const matchedImg = projImgMap[companyKey];
+      const imgSrc     = item.imageUrl || matchedImg || '';
+
       const div = document.createElement('div');
       div.className = 'exp-item reveal';
-      div.innerHTML = `<span class="exp-role"></span><div class="exp-right"><span class="exp-company"></span><span class="exp-period"></span></div>`;
+
+      const imgEl = imgSrc
+        ? `<img class="exp-thumb" src="${imgSrc}" alt="${item.company}" loading="lazy">`
+        : `<span class="exp-thumb exp-thumb--default">${EXP_DEFAULT_ICON}</span>`;
+
+      div.innerHTML = `
+        ${imgEl}
+        <span class="exp-role"></span>
+        <div class="exp-right">
+          <span class="exp-company"></span>
+          <span class="exp-period"></span>
+        </div>`;
       div.querySelector('.exp-role').textContent    = item.role;
       div.querySelector('.exp-company').textContent = item.company;
       div.querySelector('.exp-period').textContent  = item.period;

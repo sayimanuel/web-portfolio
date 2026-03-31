@@ -1058,9 +1058,12 @@ async function fetchExperience() {
     if (!items.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--muted)">No experience entries yet.</td></tr>'; return; }
     items.forEach(item => {
       const tr = document.createElement('tr');
+      const thumbHtml = item.imageUrl
+        ? `<img src="${esc(item.imageUrl)}" style="width:36px;height:36px;object-fit:cover;border-radius:8px;vertical-align:middle;margin-right:8px">`
+        : `<span style="display:inline-flex;width:36px;height:36px;align-items:center;justify-content:center;background:rgba(255,255,255,0.06);border-radius:8px;margin-right:8px;opacity:.4;vertical-align:middle"><svg width="18" height="18" viewBox="0 0 28 28" fill="none"><rect x="4" y="8" width="20" height="14" rx="2.5" stroke="currentColor" stroke-width="1.6"/><path d="M9 8V7a5 5 0 0 1 10 0v1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></span>`;
       tr.innerHTML = `
         <td style="font-weight:600">${esc(item.role)}</td>
-        <td>${esc(item.company)}</td>
+        <td>${thumbHtml}${esc(item.company)}</td>
         <td class="td-muted">${esc(item.period)}</td>
         <td style="display:flex;gap:6px">
           <button class="btn-edit" data-id="${esc(item._id)}">Edit</button>
@@ -1073,38 +1076,83 @@ async function fetchExperience() {
   } catch { toast('Failed to load experience', 'error'); }
 }
 
-function openExpForm(item = null) {
+async function openExpForm(item = null) {
   const isEdit = !!item;
+
+  // Load projects for image picker
+  let projectOptions = '<option value="">— None (use default icon) —</option>';
+  try {
+    const projects = await api('GET', '/projects');
+    projects.forEach(p => {
+      const img = p.images?.[0]?.url || p.image || '';
+      if (!img) return;
+      const selected = (item?.imageUrl && item.imageUrl === img) ? 'selected' : '';
+      projectOptions += `<option value="${esc(img)}" ${selected}>${esc(p.title)}</option>`;
+    });
+  } catch { /* ignore */ }
+
   openModal(isEdit ? 'Edit Experience' : 'Add Experience', `
     <form class="modal-form" id="expForm">
       <div class="form-field">
         <label class="form-label">Role *</label>
-        <input class="form-input" name="role" value="${item?.role || ''}" required>
+        <input class="form-input" name="role" value="${esc(item?.role || '')}" required>
       </div>
       <div class="form-field">
         <label class="form-label">Company *</label>
-        <input class="form-input" name="company" value="${item?.company || ''}" required>
+        <input class="form-input" name="company" value="${esc(item?.company || '')}" required>
       </div>
       <div class="form-field">
         <label class="form-label">Period *</label>
-        <input class="form-input" name="period" value="${item?.period || ''}" placeholder="NOV 2025 - DEC 2025" required>
+        <input class="form-input" name="period" value="${esc(item?.period || '')}" placeholder="NOV 2025 - DEC 2025" required>
       </div>
       <div class="form-field">
         <label class="form-label">Order</label>
         <input class="form-input" type="number" name="order" value="${item?.order ?? 0}">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Project Photo</label>
+        <select class="form-input" id="expImgPicker">${projectOptions}</select>
+        <p class="form-hint" style="margin-top:4px">Pilih dari project — atau paste URL manual di bawah</p>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Image URL <span class="form-hint">(manual, override picker)</span></label>
+        <input class="form-input" id="expImgUrl" type="url" value="${esc(item?.imageUrl || '')}" placeholder="https://res.cloudinary.com/...">
+        <img id="expImgPreview" src="${esc(item?.imageUrl || '')}" style="margin-top:8px;width:60px;height:60px;object-fit:cover;border-radius:10px;display:${item?.imageUrl ? 'block' : 'none'}">
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-cancel" id="expCancel">Cancel</button>
         <button type="submit" class="btn-save">${isEdit ? 'Save Changes' : 'Add Experience'}</button>
       </div>
     </form>`);
+
   document.getElementById('expCancel').addEventListener('click', closeModal);
+
+  // Picker → auto-fill URL field
+  document.getElementById('expImgPicker').addEventListener('change', e => {
+    const url = e.target.value;
+    document.getElementById('expImgUrl').value = url;
+    const preview = document.getElementById('expImgPreview');
+    preview.src = url; preview.style.display = url ? 'block' : 'none';
+  });
+  // URL field → update preview
+  document.getElementById('expImgUrl').addEventListener('input', e => {
+    const url = e.target.value.trim();
+    const preview = document.getElementById('expImgPreview');
+    preview.src = url; preview.style.display = url ? 'block' : 'none';
+  });
+
   document.getElementById('expForm').addEventListener('submit', async e => {
     e.preventDefault();
     const form = e.target; const btn = form.querySelector('.btn-save');
     btn.textContent = 'Saving...'; btn.disabled = true;
     try {
-      const body = { role: form.role.value, company: form.company.value, period: form.period.value, order: form.order.value };
+      const body = {
+        role:     form.role.value,
+        company:  form.company.value,
+        period:   form.period.value,
+        order:    form.order.value,
+        imageUrl: document.getElementById('expImgUrl').value.trim(),
+      };
       if (isEdit) await api('PUT',  '/experience/' + item._id, body);
       else        await api('POST', '/experience',              body);
       toast(isEdit ? 'Updated!' : 'Added!'); closeModal(); fetchExperience();
