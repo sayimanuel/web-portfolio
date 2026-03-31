@@ -758,26 +758,36 @@ html.light .msg-qa-link:hover { color: #172851; }
 
 .exp-item {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  justify-content: space-between;
   gap: 20px;
-  padding: 18px 0;
+  padding: 22px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 .exp-item:first-child {
   border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* ── Experience thumbnail (left) ── */
+/* ── Right group: thumb + company/period — fixed width so thumbs always align ── */
+.exp-right-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  width: 400px;
+}
+
+/* ── Thumbnail ── */
 .exp-thumb {
-  width: 80px;
-  min-width: 80px;
-  border-radius: 14px;
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  border-radius: 12px;
   object-fit: cover;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
   display: block;
   flex-shrink: 0;
-  align-self: stretch;
 }
 .exp-thumb--default {
   display: flex;
@@ -788,13 +798,13 @@ html.light .msg-qa-link:hover { color: #172851; }
 html.light .exp-thumb { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); }
 html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
 
-/* ── Text column: role / company / period stacked ── */
+/* ── Company + period stacked ── */
 .exp-info {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 2px;
-  flex: 1;
+  text-align: left;
 }
 
 .exp-role,
@@ -810,6 +820,35 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
   text-transform: capitalize;
 }
 
+/* ── Swipe-letters hover on exp-role ── */
+.exp-role {
+  display: inline-flex;
+  overflow: hidden;
+  cursor: default;
+  vertical-align: bottom;
+  text-transform: none;
+}
+.exp-role .sl-char {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  line-height: 1.2em;
+  height: 1.2em;
+}
+.exp-role .sl-char span {
+  display: block;
+  transition: transform 0.35s cubic-bezier(0.77, 0, 0.18, 1);
+  transition-delay: calc(var(--i) * 28ms);
+}
+/* The "out" layer — visible at rest */
+.exp-role .sl-char .sl-out { transform: translateY(0); }
+/* The "in" layer — hidden below at rest */
+.exp-role .sl-char .sl-in  { position: absolute; top: 0; left: 0; transform: translateY(105%); }
+
+/* On hover: out → slides up, in → slides in from below */
+.exp-item:hover .exp-role .sl-char .sl-out { transform: translateY(-105%); }
+.exp-item:hover .exp-role .sl-char .sl-in  { transform: translateY(0); }
+
 .exp-period {
   color: rgba(255,255,255,0.5);
   font-family: 'Quantico', sans-serif;
@@ -817,7 +856,6 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
   font-weight: 400;
   line-height: 1.4;
   text-transform: capitalize;
-  margin-top: 2px;
 }
 
 /* ── ABOUT ── */
@@ -1753,17 +1791,16 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
     line-height: 1.05;
   }
 
-  /* Hero card — fluid width, fixed height so typewriter doesn't resize card */
+  /* Hero card — fluid width, height follows content (tagline is fixed so no resize) */
   .hero-card {
     width: min(420px, calc(100vw - 40px));
-    height: 560px;
+    height: auto;
     padding: 20px;
-    gap: 24px;
+    gap: 20px;
   }
   .hero-photo {
-    flex: 1;
-    min-height: 0;
-    max-height: 260px;
+    flex: none;
+    height: 220px;
     margin-top: 0;
     margin-bottom: 0;
   }
@@ -1797,10 +1834,17 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
 
   /* Experience */
   .experience { padding: 60px 24px; }
-  .exp-item  { gap: 14px; padding: 16px 0; }
-  .exp-thumb { width: 60px; min-width: 60px; border-radius: 10px; }
-  .exp-role, .exp-company { font-size: 20px; line-height: 1.2; }
-  .exp-period { font-size: 15px; }
+  /* Experience — mobile: role top, thumb+info below */
+  .exp-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 16px 0;
+  }
+  .exp-right-group { align-self: flex-start; }
+  .exp-thumb  { width: 52px; height: 52px; min-width: 52px; border-radius: 10px; }
+  .exp-role, .exp-company { font-size: 20px; }
+  .exp-period { font-size: 14px; }
 
   /* About */
   .about      { padding: 80px 24px; }
@@ -1826,11 +1870,11 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
   }
   .hero-card {
     width: calc(100vw - 32px);
-    height: 460px;
+    height: auto;
     padding: 18px;
     gap: 16px;
   }
-  .hero-photo   { max-height: 210px; }
+  .hero-photo   { height: 180px; }
   .hero-label   { font-size: 17px; height: 24px; overflow: hidden; }
   .hero-tagline { font-size: 15px; line-height: 22px; height: 44px; overflow: hidden; }
 
@@ -1844,7 +1888,8 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
   .pill { font-size: 12px; padding: 6px 12px; }
 
   /* Experience */
-  .exp-role, .exp-company { font-size: 17px; line-height: 24px; }
+  .exp-thumb  { width: 46px; height: 46px; min-width: 46px; }
+  .exp-role, .exp-company { font-size: 17px; }
   .exp-period { font-size: 13px; }
 
   /* About */

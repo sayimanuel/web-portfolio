@@ -251,13 +251,24 @@ async function loadExperience() {
         : `<span class="exp-thumb exp-thumb--default">${EXP_DEFAULT_ICON}</span>`;
 
       div.innerHTML = `
-        ${imgEl}
-        <div class="exp-info">
-          <span class="exp-role"></span>
-          <span class="exp-company"></span>
-          <span class="exp-period"></span>
+        <span class="exp-role"></span>
+        <div class="exp-right-group">
+          ${imgEl}
+          <div class="exp-info">
+            <span class="exp-company"></span>
+            <span class="exp-period"></span>
+          </div>
         </div>`;
-      div.querySelector('.exp-role').textContent    = item.role;
+
+      // Swipe-letters: wrap each char of role in .sl-char with two layers
+      const roleEl = div.querySelector('.exp-role');
+      // Capitalize manually (CSS text-transform breaks per-span wrapping)
+      const roleText = item.role.replace(/\b\w/g, c => c.toUpperCase());
+      roleEl.innerHTML = [...roleText].map((ch, i) => {
+        const c = ch === ' ' ? '&nbsp;' : ch;
+        return `<span class="sl-char" style="--i:${i}"><span class="sl-out">${c}</span><span class="sl-in">${c}</span></span>`;
+      }).join('');
+
       div.querySelector('.exp-company').textContent = item.company;
       div.querySelector('.exp-period').textContent  = item.period;
       list.appendChild(div);
