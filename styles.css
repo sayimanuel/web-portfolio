@@ -4,6 +4,7 @@
   padding: 0;
 }
 
+
 /* Hide scrollbar */
 html { scrollbar-width: none; -ms-overflow-style: none; }
 html::-webkit-scrollbar { display: none; }
@@ -130,6 +131,207 @@ body {
   width: 100%;
 }
 
+/* ── Anonymous Message button ── */
+.msg-toggle {
+  position: fixed;
+  bottom: 28px;
+  left: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  height: 44px;
+  background: rgba(232,245,95,0.08);
+  border: 1px solid rgba(232,245,95,0.25);
+  border-radius: 12px;
+  color: rgba(255,255,255,0.75);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  z-index: 101;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.msg-toggle:hover,
+.msg-toggle.active {
+  background: rgba(232,245,95,0.16);
+  border-color: rgba(232,245,95,0.5);
+  color: #fff;
+}
+.msg-toggle svg { flex-shrink: 0; color: #E8F55F; }
+
+/* ── Message popup ── */
+.msg-popup {
+  position: fixed;
+  bottom: 84px;
+  left: 28px;
+  width: 320px;
+  background: rgba(10,10,50,0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(232,245,95,0.15);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+  transform-origin: bottom left;
+  pointer-events: none;
+  transition: opacity 0.25s cubic-bezier(0.16,1,0.3,1),
+              transform 0.25s cubic-bezier(0.16,1,0.3,1);
+  z-index: 102;
+}
+.msg-popup.open {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: all;
+}
+.msg-popup-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+.msg-popup-sub {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: rgba(255,255,255,0.45);
+  margin-top: -6px;
+}
+.msg-form { display: flex; flex-direction: column; gap: 8px; }
+
+/* Anonymous checkbox */
+.msg-anon-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 2px;
+}
+.msg-anon-check { display: none; }
+.msg-anon-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.06);
+  flex-shrink: 0;
+  position: relative;
+  transition: border-color 0.2s, background 0.2s;
+}
+.msg-anon-check:checked + .msg-anon-box {
+  background: rgba(232,245,95,0.2);
+  border-color: rgba(232,245,95,0.6);
+}
+.msg-anon-check:checked + .msg-anon-box::after {
+  content: '';
+  position: absolute;
+  left: 4px; top: 1.5px;
+  width: 5px; height: 9px;
+  border: 2px solid #E8F55F;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg);
+}
+.msg-anon-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.65);
+}
+#msgIdentity { display: flex; flex-direction: column; gap: 8px; overflow: hidden; transition: all 0.25s ease; }
+#msgIdentity.hidden { display: none; }
+
+/* light mode checkbox */
+html.light .msg-anon-box { border-color: rgba(23,40,81,0.25); background: rgba(23,40,81,0.05); }
+html.light .msg-anon-check:checked + .msg-anon-box { background: rgba(23,40,81,0.12); border-color: rgba(23,40,81,0.5); }
+html.light .msg-anon-check:checked + .msg-anon-box::after { border-color: #172851; }
+html.light .msg-anon-text { color: rgba(23,40,81,0.65); }
+.msg-input {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+  resize: none;
+}
+.msg-input::placeholder { color: rgba(255,255,255,0.3); }
+.msg-input:focus { border-color: rgba(232,245,95,0.4); }
+.msg-textarea { min-height: 88px; }
+.msg-error {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #ff6b6b;
+  min-height: 16px;
+}
+.msg-submit {
+  background: rgba(232,245,95,0.12);
+  border: 1px solid rgba(232,245,95,0.3);
+  border-radius: 8px;
+  padding: 9px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #E8F55F;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.msg-submit:hover { background: rgba(232,245,95,0.22); border-color: rgba(232,245,95,0.55); }
+.msg-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+.msg-qa-link {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: rgba(232,245,95,0.6);
+  text-decoration: none;
+  text-align: center;
+  transition: color 0.2s;
+}
+.msg-qa-link:hover { color: #E8F55F; }
+
+/* Light mode overrides */
+html.light .msg-toggle {
+  background: rgba(23,40,81,0.07);
+  border-color: rgba(23,40,81,0.25);
+  color: rgba(23,40,81,0.75);
+}
+html.light .msg-toggle:hover,
+html.light .msg-toggle.active {
+  background: rgba(23,40,81,0.14);
+  border-color: rgba(23,40,81,0.5);
+  color: #172851;
+}
+html.light .msg-toggle svg { color: #172851; }
+html.light .msg-popup {
+  background: rgba(240,242,255,0.9);
+  border-color: rgba(23,40,81,0.15);
+}
+html.light .msg-popup-title { color: #172851; }
+html.light .msg-popup-sub   { color: rgba(23,40,81,0.45); }
+html.light .msg-input {
+  background: rgba(23,40,81,0.05);
+  border-color: rgba(23,40,81,0.15);
+  color: #172851;
+}
+html.light .msg-input::placeholder { color: rgba(23,40,81,0.35); }
+html.light .msg-input:focus { border-color: rgba(23,40,81,0.4); }
+html.light .msg-submit {
+  background: rgba(23,40,81,0.1);
+  border-color: rgba(23,40,81,0.3);
+  color: #172851;
+}
+html.light .msg-submit:hover { background: rgba(23,40,81,0.18); }
+html.light .msg-qa-link { color: rgba(23,40,81,0.5); }
+html.light .msg-qa-link:hover { color: #172851; }
+
 /* ── Floating nav toggle ── */
 .nav-toggle {
   position: fixed;
@@ -244,6 +446,7 @@ body {
 /* ── HERO ── */
 .hero {
   position: relative;
+  z-index: 1;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -276,7 +479,7 @@ body {
 /* Glass card — sits on top of the big text */
 .hero-center {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   justify-content: center;
 }
@@ -378,7 +581,7 @@ body {
   gap: 28px;
   padding: 50px;
   border-radius: 24px 24px 0 0;
-  background: linear-gradient(180deg, rgba(127, 47, 201, 0.32) 0%, rgba(62, 23, 99, 0.32) 100%);
+  background: linear-gradient(180deg, rgba(23, 40, 81, 0.72) 0%, rgba(10, 20, 50, 0.72) 100%);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   border: 1px solid rgba(255, 255, 255, 0.10);
@@ -1286,14 +1489,17 @@ body {
 
 /* ── Unblur text reveal ── */
 .about-text {
-  filter: blur(18px);
-  opacity: 0;
-  transition: filter 1.4s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 1.2s ease;
-}
-.about-text.unblurred {
-  filter: blur(0);
   opacity: 1;
+}
+
+/* ── Hero animated grid canvas ── */
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* ── Hero particles canvas ── */
@@ -1356,21 +1562,6 @@ body {
   animation: strokeDraw 1.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
 }
 
-/* 3 & 4. Scroll reveal base */
-.reveal {
-  opacity: 0;
-  transform: translateY(44px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Stagger for project cards */
-.project-card.reveal:nth-child(1) { transition-delay: 0s; }
-.project-card.reveal:nth-child(2) { transition-delay: 0.15s; }
-.project-card.reveal:nth-child(3) { transition-delay: 0.3s; }
 
 /* ── ALL PROJECTS ── */
 .allprojects-wrapper {
@@ -1780,9 +1971,9 @@ html.light .exp-period { color: rgba(13,13,43,0.5); }
 
 /* ── About — white top → #1E30BD blue bottom (matches footer/testi blue) ── */
 html.light .about { background: linear-gradient(180deg, #f2f4fb 0%, #1E30BD 100%); }
-html.light .about-text { color: #0d0d2b; }
-html.light .char-hover { color: #0d0d2b; }
-html.light .char-yellow { color: #c8a800 !important; }
+html.light .about-text { color: #172851; }
+html.light .char-hover { color: #172851; }
+html.light .char-yellow { color: #E8F55F !important; }
 
 /* ── Testimonials — keep original #1E30BD blue background ── */
 /* (no override for .testi-marquee — stays vivid blue in both modes) */
@@ -1816,25 +2007,3 @@ html.light .about::before {
 /* ── Grid orbs ── */
 html.light .grid-orb { background: radial-gradient(circle, rgba(200,168,0,0.7) 0%, rgba(75,129,255,0.3) 50%, transparent 70%); box-shadow: 0 0 6px rgba(200,168,0,0.5); }
 
-/* ── Scroll reveal (light bg) ── */
-html.light .reveal { opacity: 0; transform: translateY(20px); }
-html.light .reveal.visible { opacity: 1; transform: translateY(0); }
-html.light .project-views { color: rgba(0,0,0,0.35); }
-
-/* Popular badge on project cards */
-.project-popular-badge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
-  background: rgba(232,245,95,0.12);
-  color: #E8F55F;
-  border: 1px solid rgba(232,245,95,0.25);
-  letter-spacing: .03em;
-}
-html.light .project-popular-badge {
-  background: rgba(122,100,0,0.1);
-  color: #7a6400;
-  border-color: rgba(122,100,0,0.25);
-}

@@ -9,7 +9,7 @@ router.post('/track', async (req, res) => {
     if (!event) return res.status(400).json({ error: 'event required' });
     await Analytics.create({ event, page: page || '', projectId: projectId || '', referrer: referrer || '', sessionId: sessionId || '', isNew: !!isNew });
     res.json({ ok: true });
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 // GET /api/analytics/summary — admin
@@ -33,7 +33,7 @@ router.get('/summary', auth, async (req, res) => {
     const convRate = uniqueSessions > 0 ? Math.round(contactClicks / uniqueSessions * 100) : 0;
 
     res.json({ totalViews, uniqueSessions, projectViews, contactClicks, trend, convRate, newVisitors: uniqueSessions - returnCount, returnCount });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // GET /api/analytics/funnel — admin
@@ -50,7 +50,7 @@ router.get('/funnel', auth, async (req, res) => {
     ]);
 
     res.json({ home, projects, cases, contact });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // GET /api/analytics/projects — admin
@@ -94,7 +94,7 @@ router.get('/projects', auth, async (req, res) => {
     });
 
     res.json(result);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // GET /api/analytics/sources — admin
@@ -127,7 +127,7 @@ router.get('/sources', auth, async (req, res) => {
       .sort((a, b) => b.count - a.count);
 
     res.json(result);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // GET /api/analytics/activity — admin (live feed)
@@ -135,7 +135,7 @@ router.get('/activity', auth, async (req, res) => {
   try {
     const events = await Analytics.find({}).sort({ createdAt: -1 }).limit(15).lean();
     res.json(events);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // GET /api/analytics/views/:projectId — public (for view counter on cards)
@@ -143,7 +143,7 @@ router.get('/views/:projectId', async (req, res) => {
   try {
     const count = await Analytics.countDocuments({ event: 'project_view', projectId: req.params.projectId });
     res.json({ count });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // GET /api/analytics/popular — public (top 3 project IDs this week)
@@ -156,7 +156,7 @@ router.get('/popular', async (req, res) => {
       { $sort: { views: -1 } }, { $limit: 3 }
     ]);
     res.json(top.map(t => t._id));
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // GET /api/analytics/sparkline?days=7 — admin (daily view counts)
@@ -172,7 +172,7 @@ router.get('/sparkline', auth, async (req, res) => {
       result.push({ label, count });
     }
     res.json(result);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 module.exports = router;

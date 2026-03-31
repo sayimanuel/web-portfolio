@@ -1,13 +1,18 @@
 // ═══════════════════════════════════════════════════
 // PORTO ADMIN PANEL
 // ═══════════════════════════════════════════════════
+// Escape HTML entities to prevent XSS
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // Update PROD_URL below before deploying to production
 const API = (() => {
   const PROD_URL = '';  // e.g. 'https://api.helloimanuel.com/api'
   const isLocal  = ['localhost', '127.0.0.1'].includes(window.location.hostname);
   return isLocal ? 'http://localhost:5500/api' : (PROD_URL || '/api');
 })();
-let TOKEN = localStorage.getItem('porto_admin_token') || '';
+let TOKEN = localStorage.getItem('porto_admin_token') || ''; // fallback local dev
 let currentTestiTab  = 'approved';
 let currentSkillsTab = 'all';
 let allTestimonials  = [];
@@ -17,11 +22,14 @@ let allSkills        = [];
 async function api(method, path, body, isForm = false) {
   const opts = {
     method,
-    headers: { Authorization: 'Bearer ' + TOKEN },
+    credentials: 'include', // kirim HttpOnly cookie otomatis
+    headers: {},
   };
+  // Fallback Authorization header untuk local dev (cross-origin)
+  if (TOKEN) opts.headers['Authorization'] = 'Bearer ' + TOKEN;
   if (body) {
     if (isForm) {
-      opts.body = body; // FormData
+      opts.body = body;
     } else {
       opts.headers['Content-Type'] = 'application/json';
       opts.body = JSON.stringify(body);
@@ -49,6 +57,10 @@ function openModal(title, bodyHTML) {
   document.getElementById('adminModal').classList.add('open');
 }
 function closeModal() {
+  if (window._processEditor) {
+    window._processEditor.destroy?.();
+    window._processEditor = null;
+  }
   document.getElementById('adminModal').classList.remove('open');
 }
 document.getElementById('modalClose').addEventListener('click', closeModal);
@@ -68,12 +80,13 @@ document.getElementById('loginForm').addEventListener('submit', async e => {
   try {
     const data = await fetch(API + '/auth/login', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: pw }),
     }).then(r => r.json());
-    if (!data.token) throw new Error(data.error || 'Failed');
-    TOKEN = data.token;
-    localStorage.setItem('porto_admin_token', TOKEN);
+    if (!data.ok) throw new Error(data.error || 'Failed');
+    // Simpan token untuk fallback local dev (cross-origin)
+    if (data.token) { TOKEN = data.token; localStorage.setItem('porto_admin_token', TOKEN); }
     showApp();
   } catch (ex) {
     err.textContent = ex.message;
@@ -88,10 +101,11 @@ document.getElementById('eyeToggle').addEventListener('click', () => {
   inp.type = inp.type === 'password' ? 'text' : 'password';
 });
 
-document.getElementById('logoutBtn').addEventListener('click', () => {
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  try { await api('POST', '/auth/logout'); } catch { /* ignore */ }
   TOKEN = '';
   localStorage.removeItem('porto_admin_token');
-  document.getElementById('adminApp').style.display = 'none';
+  document.getElementById('adminApp').style.display  = 'none';
   document.getElementById('adminLogin').style.display = 'flex';
 });
 
@@ -100,6 +114,7 @@ const sectionTitles = {
   projects: 'Projects', testimonials: 'Testimonials',
   experience: 'Experience', skills: 'Skills', profile: 'Profile',
   seo: 'SEO Settings', submissions: 'Submissions', analytics: 'Analytics',
+  editrequests: 'Edit Requests', messages: 'Messages',
 };
 
 async function showApp() {
@@ -115,9 +130,41 @@ async function showApp() {
       badge.style.display = pending.length ? '' : 'none';
     }
   } catch { /* ignore */ }
+  // Update notification badge
+  pollNotifBadge();
 }
 
-if (TOKEN) showApp();
+// ── Notifications badge ───────────────────────────────────────────────────
+let _notifPollTimer = null;
+
+async function pollNotifBadge() {
+  try {
+    const { unreadCount } = await api('GET', '/notifications/count');
+    const badge = document.getElementById('notifBadge');
+    if (badge) {
+      badge.textContent = unreadCount;
+      badge.style.display = unreadCount > 0 ? '' : 'none';
+    }
+  } catch { /* ignore */ }
+}
+
+// Start polling every 30s when logged in
+function startNotifPoll() {
+  if (_notifPollTimer) return;
+  _notifPollTimer = setInterval(pollNotifBadge, 30000);
+}
+function stopNotifPoll() {
+  clearInterval(_notifPollTimer);
+  _notifPollTimer = null;
+}
+
+// Cek session via cookie (production) atau token localStorage (local dev)
+(async () => {
+  try {
+    await fetch(API + '/auth/check', { credentials: 'include', headers: TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {} })
+      .then(r => { if (r.ok) showApp(); });
+  } catch { /* tidak bisa cek, tampilkan login */ }
+})();
 
 document.querySelectorAll('.sidebar-link[data-section]').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -129,8 +176,9 @@ document.querySelectorAll('.sidebar-link[data-section]').forEach(btn => {
 
 function loadSection(name) {
   document.querySelectorAll('.admin-content section').forEach(s => s.style.display = 'none');
-  document.getElementById('sec-' + name).style.display = 'block';
-  document.getElementById('topbarTitle').textContent = sectionTitles[name];
+  const sec = document.getElementById('sec-' + name);
+  if (sec) sec.style.display = 'block';
+  document.getElementById('topbarTitle').textContent = sectionTitles[name] || name;
   if (name === 'projects')     fetchProjects();
   if (name === 'testimonials') fetchTestimonials();
   if (name === 'experience')   fetchExperience();
@@ -139,6 +187,8 @@ function loadSection(name) {
   if (name === 'seo')          fetchSeo();
   if (name === 'submissions')  fetchSubmissions();
   if (name === 'analytics')    fetchAnalytics();
+  if (name === 'editrequests') fetchEditRequests();
+  if (name === 'messages')     loadMessages();
 }
 
 // ══════════════════════════════════════════════════════
@@ -157,24 +207,25 @@ async function fetchProjects() {
 }
 
 function makeProjectCard(p) {
+  const imgUrl = p.images?.[0]?.url || p.image || '';
   const card = document.createElement('div');
   card.className = 'admin-card glass';
   card.innerHTML = `
-    ${p.image
-      ? `<img class="admin-card-img" src="${p.image}" alt="${p.title}" loading="lazy">`
+    ${imgUrl
+      ? `<img class="admin-card-img" src="${esc(imgUrl)}" alt="${esc(p.title)}" loading="lazy">`
       : `<div class="admin-card-img-placeholder"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/><circle cx="8.5" cy="10.5" r="1.5" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"/><path d="M3 16l5-4 4 3 3-2 6 5" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-linejoin="round"/></svg></div>`
     }
     <div class="admin-card-body">
-      <div class="admin-card-title">${p.title}</div>
+      <div class="admin-card-title">${esc(p.title)}</div>
       <div class="admin-card-meta">
-        <span class="meta-tag">${p.year || '—'}</span>
-        <span class="meta-tag">${p.category || '—'}</span>
-        <span class="meta-tag">${p.type || '—'}</span>
+        <span class="meta-tag">${esc(p.year || '—')}</span>
+        <span class="meta-tag">${esc(p.category || '—')}</span>
+        <span class="meta-tag">${esc(p.type || '—')}</span>
         ${p.featured ? '<span class="meta-tag featured">Featured</span>' : ''}
       </div>
     </div>
     <div class="admin-card-actions">
-      ${p.caseUrl ? `<a class="btn-case" href="${p.caseUrl}" target="_blank">Preview</a>` : ''}
+      <a class="btn-case" href="case.html?id=${p._id}" target="_blank">Preview</a>
       <button class="btn-edit" data-id="${p._id}">Edit</button>
       <button class="btn-danger" data-id="${p._id}">Delete</button>
     </div>`;
@@ -361,30 +412,29 @@ function getTagSelect(id) {
   return [];
 }
 
-function initAdminSelects(cs, p) {
+function initAdminSelects(p) {
   const typeLabel = p?.type ? (p.type.charAt(0).toUpperCase() + p.type.slice(1)) : '';
   initAdminSelect('ts_category', ['Web Dev','Web Design'],
-    CATEGORY_TO_LABEL[p?.category] || '', 'Pilih kategori...');
+    CATEGORY_TO_LABEL[p?.category] || '', 'Select category...');
   initAdminSelect('ts_type', ['Education','Company','Private'],
-    typeLabel, 'Pilih tipe...');
+    typeLabel, 'Select type...');
   initAdminSelect('ts_year',
     [String(_CY-3),String(_CY-2),String(_CY-1),String(_CY),String(_CY+1)],
-    p?.year || String(_CY), 'Pilih tahun...');
+    p?.year || String(_CY), 'Select year...');
   initAdminSelect('ts_month',
     ['January','February','March','April','May','June','July','August','September','October','November','December'],
-    p?.month || '', 'Pilih bulan (opsional)...');
+    p?.month || '', 'Select month (optional)...');
   initAdminSelect('ts_role',
     ['Full Stack Dev','Frontend Dev','Backend Dev','UI/UX Designer','Web Designer','Mobile Dev'],
-    cs.role || '', 'Pilih role...');
-  initAdminSelect('ts_duration',
-    ['1 Week','2 Weeks','3 Weeks','1 Month','2 Months','3 Months','6 Months','1 Year'],
-    cs.duration || '', 'Pilih durasi...');
-  initAdminSelect('ts_platform',
-    ['Web App','Mobile App','Desktop App','SaaS','E-Commerce','Landing Page','CMS','API Service'],
-    cs.platform || '', 'Pilih platform...');
+    p?.role || '', 'Select role...');
+
+  // techStack: map [{name, logoUrl}] → string array for multi-select
+  const stackNames = (p?.techStack || []).map(t => (typeof t === 'string' ? t : t.name)).filter(Boolean);
+  // Fallback: old caseStudy.stack
+  const legacyStack = p?.caseStudy?.stack || [];
   initAdminMulti('ts_stack',
-    ['React','Vue','Next.js','Nuxt.js','Angular','Node.js','Express','Nest.js','MongoDB','PostgreSQL','MySQL','TypeScript','JavaScript','HTML/CSS','Tailwind CSS','Bootstrap','PHP','Laravel','WordPress','Python','Django','Flutter','React Native'],
-    cs.stack || []);
+    ['React','Vue','Next.js','Nuxt.js','Angular','Node.js','Express','Nest.js','MongoDB','PostgreSQL','MySQL','TypeScript','JavaScript','HTML/CSS','Tailwind CSS','Bootstrap','PHP','Laravel','WordPress','Python','Django','Flutter','React Native','Figma','Adobe XD'],
+    stackNames.length ? stackNames : (Array.isArray(legacyStack) ? legacyStack : []));
 }
 
 // ══════════════════════════════════════════════════════
@@ -450,7 +500,7 @@ function renderRowInput(el) {
       ${rows.map((row, i) => `
         <div class="ri-row" data-idx="${i}">
           ${cols.map(col => `
-            <input class="form-input ri-col" data-key="${col.key}"
+            <input class="form-input ri-col" data-key="${col.key}" type="${col.type||'text'}"
               value="${(row[col.key]||'').replace(/"/g,'&quot;')}"
               placeholder="${col.placeholder}">`).join('')}
           <button type="button" class="ri-del">✕</button>
@@ -532,21 +582,37 @@ function initGalleryBuilder(existingGallery) {
 
 function openProjectForm(p = null) {
   const isEdit = !!p;
-  const cs = p?.caseStudy || {};
+  const links  = p?.links || {};
+
+  // Existing images HTML (for edit mode)
+  const existingImgsHtml = (p?.images || []).map(img => `
+    <div class="img-thumb-item" data-image-id="${esc(img.imageId||'')}">
+      <img src="${esc(img.url)}" class="img-thumb" loading="lazy">
+      <span class="img-thumb-caption">${esc(img.caption||'')}</span>
+      <button type="button" class="img-thumb-del" title="Remove">✕</button>
+    </div>`).join('');
+
   openModal(isEdit ? 'Edit Project' : 'Add Project', `
     <form class="modal-form" id="projectForm">
 
+      <!-- ── PROJECT INFO ── -->
       <div class="form-section">
         <div class="form-section-hd">Project Info</div>
 
         <div class="form-field">
           <label class="form-label">Title *</label>
-          <input class="form-input" name="title" value="${p?.title||''}" required>
+          <input class="form-input" name="title" value="${esc(p?.title||'')}" required>
         </div>
 
-        <div class="form-field">
-          <label class="form-label">Description</label>
-          <textarea class="form-input" name="description" rows="2">${p?.description||''}</textarea>
+        <div class="form-row-2">
+          <div class="form-field">
+            <label class="form-label">Tag <span class="form-hint">shown above title</span></label>
+            <input class="form-input" name="tag" value="${esc(p?.tag||'')}" placeholder="e.g. Case Study, UI Design">
+          </div>
+          <div class="form-field">
+            <label class="form-label">Order <span class="form-hint">lower = first</span></label>
+            <input class="form-input" type="number" name="order" value="${p?.order??0}">
+          </div>
         </div>
 
         <div class="form-row-2">
@@ -559,6 +625,7 @@ function openProjectForm(p = null) {
             <div class="tag-select" id="ts_type"></div>
           </div>
         </div>
+
         <div class="form-row-2">
           <div class="form-field">
             <label class="form-label">Year *</label>
@@ -570,17 +637,6 @@ function openProjectForm(p = null) {
           </div>
         </div>
 
-        <div class="form-row-2">
-          <div class="form-field">
-            <label class="form-label">Order <span class="form-hint">lower = first</span></label>
-            <input class="form-input" type="number" name="order" value="${p?.order??0}">
-          </div>
-          <div class="form-field">
-            <label class="form-label">Case Study URL <span class="form-hint">blank = auto-set</span></label>
-            <input class="form-input" type="url" name="caseUrl" value="${p?.caseUrl||''}" placeholder="auto: case.html?id=...">
-          </div>
-        </div>
-
         <div class="form-field">
           <div class="toggle-wrap">
             <input type="checkbox" class="toggle-input" name="featured" id="featuredToggle" ${p?.featured?'checked':''}>
@@ -588,102 +644,137 @@ function openProjectForm(p = null) {
             <span class="toggle-text">Featured on Homepage</span>
           </div>
         </div>
+      </div>
 
-        <div class="form-field">
-          <label class="form-label">Project Image</label>
-          <div class="img-upload-area" id="imgUploadArea">
-            <input type="file" id="imgFileInput" accept="image/*">
-            ${p?.image?`<img class="img-upload-preview" src="${p.image}" style="display:block">`:'<img class="img-upload-preview" id="imgPreview">'}
-            <p class="img-upload-text">Click to upload · JPG, PNG, WEBP · max 5MB</p>
-          </div>
+      <!-- ── IMAGES ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Images <span class="form-hint">slider — up to 20</span></div>
+        ${existingImgsHtml ? `<div class="img-thumbs-row" id="existingImgsRow">${existingImgsHtml}</div>` : ''}
+        <div class="img-upload-area" id="imgUploadArea">
+          <input type="file" id="imgFileInput" accept="image/*" multiple>
+          <p class="img-upload-text">Click to upload · JPG, PNG, WEBP · multiple allowed</p>
+          <div class="img-new-previews" id="imgNewPreviews"></div>
         </div>
       </div>
 
+      <!-- ── HEADER META ── -->
       <div class="form-section">
-        <div class="form-section-hd">Case Study</div>
-
+        <div class="form-section-hd">Header Meta</div>
         <div class="form-row-2">
-          <div class="form-field">
-            <label class="form-label">Tech Stack <span class="form-hint">multi-select</span></label>
-            <div class="tag-select" id="ts_stack"></div>
-          </div>
           <div class="form-field">
             <label class="form-label">Role</label>
             <div class="tag-select" id="ts_role"></div>
           </div>
-        </div>
-        <div class="form-row-2">
           <div class="form-field">
-            <label class="form-label">Duration</label>
-            <div class="tag-select" id="ts_duration"></div>
-          </div>
-          <div class="form-field">
-            <label class="form-label">Platform</label>
-            <div class="tag-select" id="ts_platform"></div>
+            <label class="form-label">Period <span class="form-hint">e.g. 3 Months</span></label>
+            <input class="form-input" name="period" value="${esc(p?.period||p?.caseStudy?.duration||'')}" placeholder="e.g. 3 Months, Jan–Mar 2024">
           </div>
         </div>
-        <div class="form-field">
-          <label class="form-label">Client / Company <span class="form-hint">untuk auto-sync ke Experience</span></label>
-          <input class="form-input" name="client" value="${cs.client||''}" placeholder="e.g. Cruffein, FTI UKSW, Freelance">
-        </div>
-
-        <div class="form-field">
-          <div class="pgf-panel">
-            <div class="pgf-tabs" id="pgfTabs">
-              <button type="button" class="pgf-tab active" data-pgf="li_problems">Problems <span class="pgf-badge" id="badge_li_problems">0</span></button>
-              <button type="button" class="pgf-tab" data-pgf="li_goals">Goals <span class="pgf-badge" id="badge_li_goals">0</span></button>
-              <button type="button" class="pgf-tab" data-pgf="li_features">Features <span class="pgf-badge" id="badge_li_features">0</span></button>
-            </div>
-            <div class="pgf-body">
-              <div class="pgf-pane active" id="pane_li_problems"><div class="li-wrap" id="li_problems"></div></div>
-              <div class="pgf-pane" id="pane_li_goals"><div class="li-wrap" id="li_goals"></div></div>
-              <div class="pgf-pane" id="pane_li_features"><div class="li-wrap" id="li_features"></div></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-field">
-          <label class="form-label">Architecture Description</label>
-          <textarea class="form-input" name="cs_archDesc" rows="2" placeholder="Describe the system architecture...">${cs.architectureDesc||''}</textarea>
-        </div>
-
-        <div class="form-field">
-          <label class="form-label">Architecture Image</label>
-          <div class="img-upload-area" id="archUploadArea">
-            <input type="file" id="archFileInput" accept="image/*">
-            ${cs.architectureImage?`<img class="img-upload-preview" src="${cs.architectureImage}" style="display:block">`:'<img class="img-upload-preview" style="display:none">'}
-            <p class="img-upload-text">Click to upload architecture diagram</p>
-          </div>
-        </div>
-
-        <div class="form-field">
-          <label class="form-label">UI Gallery <span class="form-hint">tabs — multiple images per tab = carousel</span></label>
-          <div id="galleryBuilder" class="gallery-builder"></div>
-          <button type="button" id="addGalleryTabBtn" class="btn-add-gallery-tab">
-            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><line x1="5.5" y1="1" x2="5.5" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="1" y1="5.5" x2="10" y2="5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            Add Tab
-          </button>
-        </div>
-
-        <div class="form-field">
-          <label class="form-label">Timeline</label>
-          <div class="ri-wrap" id="ri_timeline"></div>
-        </div>
-
-        <div class="form-field">
-          <label class="form-label">Challenges &amp; Solutions</label>
-          <div class="ri-wrap" id="ri_challenges"></div>
-        </div>
-
-        <div class="form-field">
-          <label class="form-label">Results</label>
-          <div class="ri-wrap" id="ri_results"></div>
-        </div>
-
         <div class="form-field">
           <label class="form-label">Live URL</label>
-          <input class="form-input" type="url" name="cs_liveUrl" value="${cs.liveUrl||''}" placeholder="https://yourproject.com">
+          <input class="form-input" type="url" name="liveUrl" value="${esc(p?.liveUrl||p?.caseStudy?.liveUrl||'')}" placeholder="https://yourproject.com">
         </div>
+      </div>
+
+      <!-- ── CONTENT ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Content</div>
+        <div class="form-field">
+          <label class="form-label">Overview</label>
+          <textarea class="form-input" name="overview" rows="4" placeholder="Brief description of the project...">${esc(p?.overview||p?.description||'')}</textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Collaboration</label>
+          <textarea class="form-input" name="collaboration" rows="2" placeholder="Who did you work with? Client, team, freelance...">${esc(p?.collaboration||'')}</textarea>
+        </div>
+      </div>
+
+      <!-- ── TECH STACK ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Tech Stack</div>
+        <div class="form-field">
+          <div class="tag-select" id="ts_stack"></div>
+        </div>
+      </div>
+
+      <!-- ── METRICS ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Metrics <span class="form-hint">key numbers / achievements</span></div>
+        <div class="ri-wrap" id="ri_metrics"></div>
+      </div>
+
+      <!-- ── RESPONSIBILITIES ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Responsibilities</div>
+        <div class="li-wrap" id="li_responsibilities"></div>
+      </div>
+
+      <!-- ── OUTCOME ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Outcome</div>
+        <div class="form-field">
+          <textarea class="form-input" name="outcome" rows="3" placeholder="What was the result or impact?">${esc(p?.outcome||'')}</textarea>
+        </div>
+        <div class="form-section-hd" style="margin-top:12px;font-size:11px">Proof-of-Work Links</div>
+        <div class="form-row-3">
+          <div class="form-field">
+            <label class="form-label">GitHub</label>
+            <input class="form-input" type="url" name="link_github" value="${esc(links.github||'')}" placeholder="https://github.com/...">
+          </div>
+          <div class="form-field">
+            <label class="form-label">Figma</label>
+            <input class="form-input" type="url" name="link_figma" value="${esc(links.figma||'')}" placeholder="https://figma.com/...">
+          </div>
+          <div class="form-field">
+            <label class="form-label">Prototype</label>
+            <input class="form-input" type="url" name="link_prototype" value="${esc(links.prototype||'')}" placeholder="https://...">
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DETAIL SECTIONS ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Detail Sections</div>
+        <div class="form-field">
+          <label class="form-label">Detailed Information</label>
+          <textarea class="form-input" name="detailedInfo" rows="3" placeholder="In-depth project information...">${esc(p?.detailedInfo||'')}</textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Problem &amp; Solution</label>
+          <textarea class="form-input" name="problemSolution" rows="3" placeholder="Problem encountered and how it was solved...">${esc(p?.problemSolution||'')}</textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Application Flow</label>
+          <textarea class="form-input" name="appFlow" rows="3" placeholder="How the application flows / user journey...">${esc(p?.appFlow||'')}</textarea>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Technical Notes</label>
+          <textarea class="form-input" name="technicalNotes" rows="3" placeholder="Architecture decisions, trade-offs, interesting technical choices...">${esc(p?.technicalNotes||'')}</textarea>
+        </div>
+      </div>
+
+      <!-- ── IMPLEMENT FLOW ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Implementation Flow <span class="form-hint">ordered steps</span></div>
+        <div class="ri-wrap" id="ri_implFlow"></div>
+      </div>
+
+      <!-- ── IMPLEMENT DETAILS ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Implementation Details</div>
+        <div class="li-wrap" id="li_implDetails"></div>
+      </div>
+
+      <!-- ── KEY LEARNINGS ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Key Learnings</div>
+        <div class="li-wrap" id="li_keyLearnings"></div>
+      </div>
+
+      <!-- ── PROCESS (Editor.js) ── -->
+      <div class="form-section">
+        <div class="form-section-hd">Process <span class="form-hint">rich text editor</span></div>
+        <div id="processEditorHolder" class="process-editor-holder"></div>
       </div>
 
       <div class="modal-actions">
@@ -694,64 +785,83 @@ function openProjectForm(p = null) {
 
   document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
 
-  // Hero image preview
+  // New image file previews
   document.getElementById('imgFileInput').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const preview = document.querySelector('#imgUploadArea .img-upload-preview');
-    if (preview) { preview.src = URL.createObjectURL(file); preview.style.display = 'block'; }
+    const prev = document.getElementById('imgNewPreviews');
+    if (!prev) return;
+    prev.innerHTML = '';
+    [...e.target.files].forEach(f => {
+      const img = document.createElement('img');
+      img.className = 'img-new-preview';
+      img.src = URL.createObjectURL(f);
+      prev.appendChild(img);
+    });
   });
 
-  // Architecture image preview
-  document.getElementById('archFileInput').addEventListener('change', e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const preview = document.querySelector('#archUploadArea .img-upload-preview');
-    if (preview) { preview.src = URL.createObjectURL(file); preview.style.display = 'block'; }
+  // Remove existing image (immediate API call in edit mode)
+  document.querySelectorAll('.img-thumb-del').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!isEdit) { btn.closest('.img-thumb-item').remove(); return; }
+      const item    = btn.closest('.img-thumb-item');
+      const imageId = item.dataset.imageId;
+      if (!imageId) { item.remove(); return; }
+      btn.disabled = true;
+      try {
+        const rfd = new FormData();
+        rfd.append('removeImageId', imageId);
+        await api('PUT', '/projects/' + p._id, rfd, true);
+        item.remove();
+      } catch (ex) {
+        toast(ex.message, 'error');
+        btn.disabled = false;
+      }
+    });
   });
 
-  // Gallery builder
-  initGalleryBuilder(cs.uiGallery || []);
+  // Init selects + list + row inputs
+  initAdminSelects(p);
 
-  // Selects + list + row inputs
-  initAdminSelects(cs, p);
-  initListInput('li_problems', cs.problems || []);
-  initListInput('li_goals',    cs.goals    || []);
-  initListInput('li_features', cs.features || []);
+  initRowInput('ri_metrics', p?.metrics || [],
+    [{key:'value',placeholder:'e.g. 98',type:'number'},{key:'label',placeholder:'Label (e.g. % Satisfaction)'}]);
 
-  // PGF tab switching + live badges
-  function updatePgfBadges() {
-    ['li_problems','li_goals','li_features'].forEach(id => {
-      const badge = document.getElementById('badge_' + id);
-      if (badge) badge.textContent = (document.getElementById(id)?._li?.length || 0);
+  initListInput('li_responsibilities', p?.responsibilities || []);
+
+  initRowInput('ri_implFlow', p?.implementFlow || [],
+    [{key:'step',placeholder:'Step name'},{key:'desc',placeholder:'Description'}]);
+
+  initListInput('li_implDetails',   p?.implementDetails || []);
+  initListInput('li_keyLearnings',  p?.keyLearnings     || []);
+
+  // Init Editor.js for Process section
+  if (window.EditorJS) {
+    if (window._processEditor) {
+      window._processEditor.destroy?.();
+      window._processEditor = null;
+    }
+    const existingProcess = p?.process
+      ? (typeof p.process === 'string' ? JSON.parse(p.process) : p.process)
+      : {};
+    window._processEditor = new window.EditorJS({
+      holder: 'processEditorHolder',
+      data: existingProcess,
+      placeholder: 'Write the project process here...',
+      tools: {
+        header:    window.Header    ? { class: window.Header,    inlineToolbar: true } : undefined,
+        list:      window.List      ? { class: window.List,      inlineToolbar: true } : undefined,
+        quote:     window.Quote     ? { class: window.Quote,     inlineToolbar: true } : undefined,
+        code:      window.CodeTool  ? { class: window.CodeTool }                       : undefined,
+        delimiter: window.Delimiter ? { class: window.Delimiter }                      : undefined,
+        table:     window.Table     ? { class: window.Table,     inlineToolbar: true } : undefined,
+        checklist: window.Checklist ? { class: window.Checklist, inlineToolbar: true } : undefined,
+        warning:   window.Warning   ? { class: window.Warning,   inlineToolbar: true } : undefined,
+        marker:    window.Marker    ? { class: window.Marker }                         : undefined,
+        inlineCode: window.InlineCode ? { class: window.InlineCode } : undefined,
+      },
+      minHeight: 200,
     });
   }
-  updatePgfBadges();
-  // Patch renderListInput to update badges on each change
-  ['li_problems','li_goals','li_features'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const orig = el._li;
-    const proxy = new Proxy(orig, {
-      set(t, k, v) { t[k] = v; setTimeout(updatePgfBadges, 0); return true; }
-    });
-    el._li = proxy;
-  });
-  document.getElementById('pgfTabs')?.querySelectorAll('.pgf-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.pgf-tab').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.pgf-pane').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('pane_' + btn.dataset.pgf)?.classList.add('active');
-    });
-  });
-  initRowInput('ri_timeline',   cs.timeline   || [],
-    [{key:'phase',placeholder:'Phase'},{key:'desc',placeholder:'Description'},{key:'duration',placeholder:'Duration'}]);
-  initRowInput('ri_challenges', cs.challenges || [],
-    [{key:'challenge',placeholder:'Challenge'},{key:'solution',placeholder:'Solution'}]);
-  initRowInput('ri_results',    cs.results    || [],
-    [{key:'value',placeholder:'Value (e.g. 98%)'},{key:'metric',placeholder:'Metric'},{key:'desc',placeholder:'Description'}]);
 
+  // Form submit
   document.getElementById('projectForm').addEventListener('submit', async e => {
     e.preventDefault();
     const form = e.target;
@@ -760,87 +870,93 @@ function openProjectForm(p = null) {
 
     try {
       const fd = new FormData();
-      fd.append('title',       form.title.value);
-      fd.append('description', form.description.value);
+      fd.append('title',    form.title.value.trim());
+      fd.append('tag',      form.tag.value.trim());
+      fd.append('order',    form.order.value);
+      fd.append('featured', form.featured.checked);
+
       const catLabel = getTagSelect('ts_category')[0] || '';
       fd.append('category', CATEGORY_TO_VAL[catLabel] || catLabel.toLowerCase().replace(/\s+/g,'-'));
       const typeLabel = getTagSelect('ts_type')[0] || '';
       fd.append('type',  typeLabel.toLowerCase() || '');
       fd.append('year',  getTagSelect('ts_year')[0]  || '');
       fd.append('month', getTagSelect('ts_month')[0] || '');
-      fd.append('order',       form.order.value);
-      fd.append('featured',    form.featured.checked);
-      fd.append('caseUrl',     form.caseUrl.value.trim());
 
-      const heroFile = document.getElementById('imgFileInput').files[0];
-      if (heroFile) fd.append('image', heroFile);
+      // New images
+      const imgFiles = document.getElementById('imgFileInput').files;
+      [...imgFiles].forEach(f => fd.append('images', f));
 
-      const caseStudy = {
-        stack:    getTagSelect('ts_stack'),
-        role:     getTagSelect('ts_role')[0]     || '',
-        client:   form.client?.value.trim()      || '',
-        duration: getTagSelect('ts_duration')[0] || '',
-        platform: getTagSelect('ts_platform')[0] || '',
-        problems: getListInput('li_problems'),
-        goals:    getListInput('li_goals'),
-        features: getListInput('li_features'),
-        architectureDesc:    form.cs_archDesc.value,
-        architectureImage:   p?.caseStudy?.architectureImage   || '',
-        architectureImageId: p?.caseStudy?.architectureImageId || '',
-        uiGallery: [...document.querySelectorAll('#galleryBuilder .gallery-row')].map(row => ({
-          label:  row.querySelector('.gal-label').value.trim(),
-          images: [...row.querySelectorAll('.gallery-thumb-item')].map(i => i.dataset.url).filter(Boolean),
-        })).filter(r => r.label),
-        timeline:   getRowInput('ri_timeline').filter(r => r.phase||r.desc),
-        challenges: getRowInput('ri_challenges').filter(r => r.challenge||r.solution),
-        results:    getRowInput('ri_results').filter(r => r.value||r.metric),
-        liveUrl:    form.cs_liveUrl.value,
-      };
-      fd.append('caseStudy', JSON.stringify(caseStudy));
+      // Header meta
+      fd.append('role',    getTagSelect('ts_role')[0] || '');
+      fd.append('period',  form.period.value.trim());
+      fd.append('liveUrl', form.liveUrl.value.trim());
 
-      const archFile = document.getElementById('archFileInput')?.files[0];
-      if (archFile) fd.append('archImage', archFile);
+      // Content
+      fd.append('overview',      form.overview.value.trim());
+      fd.append('collaboration', form.collaboration.value.trim());
 
-      // Gallery new image uploads
-      document.querySelectorAll('#galleryBuilder .gallery-row').forEach(row => {
-        const idx = row.dataset.idx;
-        const fileInput = row.querySelector(`input[name="gal_${idx}"]`);
-        if (fileInput?.files?.length) {
-          [...fileInput.files].forEach(file => fd.append(`gal_${idx}`, file));
-        }
-      });
+      // Tech stack → array of {name}
+      const stackNames = getTagSelect('ts_stack');
+      fd.append('techStack', JSON.stringify(stackNames.map(name => ({ name }))));
+
+      // Metrics
+      fd.append('metrics', JSON.stringify(getRowInput('ri_metrics').filter(r => r.value)));
+
+      // Responsibilities
+      fd.append('responsibilities', JSON.stringify(getListInput('li_responsibilities')));
+
+      // Outcome + links
+      fd.append('outcome', form.outcome.value.trim());
+      fd.append('links', JSON.stringify({
+        github:    form.link_github.value.trim(),
+        figma:     form.link_figma.value.trim(),
+        prototype: form.link_prototype.value.trim(),
+      }));
+
+      // Detail sections
+      fd.append('detailedInfo',    form.detailedInfo.value.trim());
+      fd.append('problemSolution', form.problemSolution.value.trim());
+      fd.append('appFlow',         form.appFlow.value.trim());
+      fd.append('technicalNotes',  form.technicalNotes.value.trim());
+
+      // Implement flow + details
+      fd.append('implementFlow',    JSON.stringify(getRowInput('ri_implFlow').filter(r => r.step)));
+      fd.append('implementDetails', JSON.stringify(getListInput('li_implDetails')));
+
+      // Key learnings
+      fd.append('keyLearnings', JSON.stringify(getListInput('li_keyLearnings')));
+
+      // Process (Editor.js)
+      if (window._processEditor) {
+        try {
+          const processData = await window._processEditor.save();
+          if (processData.blocks?.length) {
+            fd.append('process', JSON.stringify(processData));
+          }
+        } catch { /* editor not ready */ }
+      }
 
       let saved;
       if (isEdit) {
-        saved = await api('PUT',  '/projects/' + p._id, fd, true);
+        // PUT uses newImages field for new uploads
+        const fd2 = new FormData();
+        for (const [k, v] of fd.entries()) {
+          if (k === 'images') fd2.append('newImages', v);
+          else fd2.append(k, v);
+        }
+        saved = await api('PUT', '/projects/' + p._id, fd2, true);
       } else {
         saved = await api('POST', '/projects', fd, true);
-        // Auto-set caseUrl if left blank
-        if (!form.caseUrl.value.trim() && saved._id) {
-          const pfd = new FormData();
-          pfd.append('title',    form.title.value);
-          pfd.append('category', CATEGORY_TO_VAL[getTagSelect('ts_category')[0]] || getTagSelect('ts_category')[0]?.toLowerCase().replace(/\s+/g,'-') || '');
-          pfd.append('type',     (getTagSelect('ts_type')[0] || '').toLowerCase());
-          pfd.append('year',     getTagSelect('ts_year')[0]  || '');
-          pfd.append('caseUrl',  `case.html?id=${saved._id}`);
-          await api('PUT', '/projects/' + saved._id, pfd, true);
-        }
       }
 
-      // Auto-sync tech stack → Skills section
-      const stackItems = getTagSelect('ts_stack');
-      if (stackItems.length) {
+      // Auto-sync tech stack → Skills
+      if (stackNames.length) {
         try {
-          const payload = stackItems.map(name => ({
-            name,
-            category: STACK_CATEGORY[name] || 'frontend',
-          }));
-          const result = await api('POST', '/skills/sync', payload);
-          if (result.added > 0) {
-            toast(`Project saved! ${result.added} skill${result.added > 1 ? 's' : ''} auto-added to Tech Stack.`);
-          } else {
-            toast(isEdit ? 'Project updated!' : 'Project created!');
-          }
+          const payload = stackNames.map(name => ({ name, category: STACK_CATEGORY[name] || 'frontend' }));
+          const result  = await api('POST', '/skills/sync', payload);
+          toast(result.added > 0
+            ? `Saved! ${result.added} skill${result.added > 1 ? 's' : ''} added to Tech Stack.`
+            : (isEdit ? 'Project updated!' : 'Project created!'));
         } catch {
           toast(isEdit ? 'Project updated!' : 'Project created!');
         }
@@ -848,20 +964,8 @@ function openProjectForm(p = null) {
         toast(isEdit ? 'Project updated!' : 'Project created!');
       }
 
-      // Auto-sync experience from project role + client
-      const role   = getTagSelect('ts_role')[0] || '';
-      const client = form.client?.value.trim()  || '';
-      const period = [getTagSelect('ts_month')[0], getTagSelect('ts_year')[0]].filter(Boolean).join(' ');
-      if (role && client) {
-        try {
-          await api('POST', '/experience/sync', [{ role, company: client, period }]);
-        } catch { /* silent — experience sync is optional */ }
-        if (document.getElementById('sec-experience').style.display !== 'none') fetchExperience();
-      }
-
       closeModal();
       fetchProjects();
-      // Refresh skills grid if currently visible
       if (document.getElementById('sec-skills').style.display !== 'none') fetchSkills();
     } catch (ex) { toast(ex.message, 'error'); }
     finally { btn.textContent = isEdit ? 'Save Changes' : 'Create Project'; btn.disabled = false; }
@@ -909,13 +1013,13 @@ function renderTestimonials() {
   filtered.forEach(t => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td style="font-weight:600">${t.name}</td>
-      <td class="td-muted">${t.role || '—'}</td>
-      <td class="td-quote td-muted">${t.quote}</td>
+      <td style="font-weight:600">${esc(t.name)}</td>
+      <td class="td-muted">${esc(t.role || '—')}</td>
+      <td class="td-quote td-muted">${esc(t.quote)}</td>
       <td class="td-muted">${new Date(t.createdAt).toLocaleDateString('id-ID')}</td>
       <td style="display:flex;gap:6px;flex-wrap:wrap">
-        ${!t.approved ? `<button class="btn-approve" data-id="${t._id}">Approve</button>` : ''}
-        <button class="btn-danger" data-id="${t._id}">Delete</button>
+        ${!t.approved ? `<button class="btn-approve" data-id="${esc(t._id)}">Approve</button>` : ''}
+        <button class="btn-danger" data-id="${esc(t._id)}">Delete</button>
       </td>`;
     tr.querySelector('.btn-danger').addEventListener('click', async () => {
       if (!confirm('Delete this review?')) return;
@@ -954,12 +1058,12 @@ async function fetchExperience() {
     items.forEach(item => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td style="font-weight:600">${item.role}</td>
-        <td>${item.company}</td>
-        <td class="td-muted">${item.period}</td>
+        <td style="font-weight:600">${esc(item.role)}</td>
+        <td>${esc(item.company)}</td>
+        <td class="td-muted">${esc(item.period)}</td>
         <td style="display:flex;gap:6px">
-          <button class="btn-edit" data-id="${item._id}">Edit</button>
-          <button class="btn-danger" data-id="${item._id}">Delete</button>
+          <button class="btn-edit" data-id="${esc(item._id)}">Edit</button>
+          <button class="btn-danger" data-id="${esc(item._id)}">Delete</button>
         </td>`;
       tr.querySelector('.btn-edit').addEventListener('click',   () => openExpForm(item));
       tr.querySelector('.btn-danger').addEventListener('click', () => deleteExp(item._id));
@@ -1069,7 +1173,7 @@ function renderSkills() {
   filtered.forEach(s => {
     const el = document.createElement('div');
     el.className = 'skill-pill-admin';
-    el.innerHTML = `<span class="cat-dot cat-${s.category}"></span>${s.name}<button class="skill-del-btn" title="Delete"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>`;
+    el.innerHTML = `<span class="cat-dot cat-${esc(s.category)}"></span>${esc(s.name)}<button class="skill-del-btn" title="Delete"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>`;
     el.querySelector('.skill-del-btn').addEventListener('click', async () => {
       if (!confirm(`Delete "${s.name}"?`)) return;
       try { await api('DELETE', '/skills/' + s._id); toast('Deleted'); fetchSkills(); }
@@ -1258,17 +1362,17 @@ async function fetchSubmissions() {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>
-          ${p.image ? `<img src="${p.image}" style="width:56px;height:40px;object-fit:cover;border-radius:6px;">` : '—'}
+          ${p.image ? `<img src="${esc(p.image)}" style="width:56px;height:40px;object-fit:cover;border-radius:6px;">` : '—'}
         </td>
-        <td><strong>${p.title}</strong></td>
-        <td>${p.submittedBy?.name || '—'}<br><small style="opacity:.5">${p.submittedBy?.email || ''}</small></td>
-        <td><span class="meta-tag">${p.category || '—'}</span></td>
-        <td>${p.year || '—'}</td>
-        <td style="max-width:180px;font-size:12px;opacity:.65">${p.submittedBy?.note || '—'}</td>
+        <td><strong>${esc(p.title)}</strong></td>
+        <td>${esc(p.submittedBy?.name || '—')}<br><small style="opacity:.5">${esc(p.submittedBy?.email || '')}</small></td>
+        <td><span class="meta-tag">${esc(p.category || '—')}</span></td>
+        <td>${esc(p.year || '—')}</td>
+        <td style="max-width:180px;font-size:12px;opacity:.65">${esc(p.submittedBy?.note || '—')}</td>
         <td>
           <div style="display:flex;gap:8px">
-            <button class="btn-edit btn-approve" data-id="${p._id}">Approve</button>
-            <button class="btn-danger btn-reject" data-id="${p._id}">Reject</button>
+            <button class="btn-edit btn-approve" data-id="${esc(p._id)}">Approve</button>
+            <button class="btn-danger btn-reject" data-id="${esc(p._id)}">Reject</button>
           </div>
         </td>`;
       tr.querySelector('.btn-approve').addEventListener('click', () => approveSubmission(p._id));
@@ -1689,4 +1793,220 @@ let _anRefreshTimer = null;
   const sec = document.getElementById('sec-analytics');
   if (sec) observer.observe(sec, { attributes: true, attributeFilter: ['style'] });
 })();
+
+// ══════════════════════════════════════════════════════
+// EDIT REQUESTS
+// ══════════════════════════════════════════════════════
+let _editReqFilter = 'pending';
+
+async function fetchEditRequests() {
+  const list = document.getElementById('editRequestsList');
+  if (!list) return;
+  list.innerHTML = '<div class="empty-state">Loading…</div>';
+
+  // Refresh notification badge after viewing
+  pollNotifBadge();
+
+  try {
+    const requests = await api('GET', `/edit-requests?status=${_editReqFilter}`);
+    const countEl  = document.getElementById('editRequestsCount');
+    if (countEl) countEl.textContent = requests.length + ' requests';
+
+    list.innerHTML = '';
+    if (!requests.length) {
+      list.innerHTML = `<div class="empty-state">No ${_editReqFilter} edit requests.</div>`;
+      return;
+    }
+
+    requests.forEach(r => list.appendChild(makeEditRequestCard(r)));
+  } catch (e) {
+    toast('Failed to load edit requests', 'error');
+    list.innerHTML = '<div class="empty-state">Failed to load.</div>';
+  }
+}
+
+function makeEditRequestCard(r) {
+  const date = new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fields = Object.keys(r.fieldChanges || {});
+  const hasImages = r.newImages?.length > 0;
+
+  const card = document.createElement('div');
+  card.className = 'er-admin-card glass' + (r.status === 'pending' ? ' er-pending' : '');
+  card.innerHTML = `
+    <div class="er-card-header">
+      <div class="er-card-meta">
+        <span class="er-card-project">${esc(r.projectTitle || r.projectId)}</span>
+        <span class="er-card-status er-status-${r.status}">${r.status}</span>
+      </div>
+      <span class="er-card-date">${date}</span>
+    </div>
+    <div class="er-card-from">
+      <strong>${esc(r.requesterName)}</strong>
+      <span class="er-card-email">&lt;${esc(r.requesterEmail)}&gt;</span>
+    </div>
+    ${r.message ? `<p class="er-card-msg">"${esc(r.message)}"</p>` : ''}
+    <div class="er-card-changes">
+      ${fields.length ? `<span class="er-change-tag">Fields: ${fields.map(esc).join(', ')}</span>` : ''}
+      ${hasImages ? `<span class="er-change-tag">+${r.newImages.length} image${r.newImages.length > 1 ? 's' : ''}</span>` : ''}
+      ${!fields.length && !hasImages ? '<span class="er-change-tag er-change-empty">No field changes</span>' : ''}
+    </div>
+    ${r.status === 'pending' ? `
+    <div class="er-card-actions">
+      <button class="btn-sm btn-approve" onclick="approveEditRequest('${r._id}', this)">Approve</button>
+      <button class="btn-sm btn-reject"  onclick="rejectEditRequest('${r._id}', this)">Reject</button>
+      <button class="btn-sm btn-outline" onclick="viewEditRequest('${r._id}')">View Details</button>
+    </div>` : (r.adminNote ? `<p class="er-card-note">Note: ${esc(r.adminNote)}</p>` : '')}
+  `;
+  return card;
+}
+
+async function approveEditRequest(id, btn) {
+  if (!confirm('Apply these changes to the project?')) return;
+  const note = prompt('Admin note (optional):') || '';
+  btn.textContent = 'Approving…'; btn.disabled = true;
+  try {
+    await api('PATCH', `/edit-requests/${id}/approve`, { adminNote: note });
+    toast('Edit request approved and applied!');
+    fetchEditRequests();
+  } catch (e) {
+    toast(e.message, 'error');
+    btn.textContent = 'Approve'; btn.disabled = false;
+  }
+}
+
+async function rejectEditRequest(id, btn) {
+  const note = prompt('Reason for rejection (optional):') || '';
+  btn.textContent = 'Rejecting…'; btn.disabled = true;
+  try {
+    await api('PATCH', `/edit-requests/${id}/reject`, { adminNote: note });
+    toast('Edit request rejected.');
+    fetchEditRequests();
+  } catch (e) {
+    toast(e.message, 'error');
+    btn.textContent = 'Reject'; btn.disabled = false;
+  }
+}
+
+async function viewEditRequest(id) {
+  try {
+    const r = await api('GET', `/edit-requests/${id}`);
+    const fields = r.fieldChanges || {};
+    const fieldsHTML = Object.entries(fields).map(([k, v]) =>
+      `<tr><td><strong>${esc(k)}</strong></td><td>${esc(typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v))}</td></tr>`
+    ).join('');
+
+    const imagesHTML = (r.newImages || []).map(img =>
+      `<img src="${esc(img.url)}" style="max-width:120px;max-height:90px;border-radius:6px;object-fit:cover;">`
+    ).join('');
+
+    openModal(`Edit Request — ${esc(r.projectTitle)}`, `
+      <p><strong>From:</strong> ${esc(r.requesterName)} &lt;${esc(r.requesterEmail)}&gt;</p>
+      ${r.message ? `<p><strong>Message:</strong> ${esc(r.message)}</p>` : ''}
+      ${fieldsHTML ? `<h4 style="margin:16px 0 8px">Field Changes</h4>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead><tr><th style="text-align:left;padding:6px;border-bottom:1px solid rgba(255,255,255,.1)">Field</th>
+          <th style="text-align:left;padding:6px;border-bottom:1px solid rgba(255,255,255,.1)">New Value</th></tr></thead>
+          <tbody>${fieldsHTML}</tbody></table>` : ''}
+      ${imagesHTML ? `<h4 style="margin:16px 0 8px">New Images</h4><div style="display:flex;gap:8px;flex-wrap:wrap">${imagesHTML}</div>` : ''}
+    `);
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// Filter tabs for edit requests
+document.querySelectorAll('[data-er-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-er-filter]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _editReqFilter = btn.dataset.erFilter;
+    fetchEditRequests();
+  });
+});
+
+// Start notification polling when logged in
+document.addEventListener('DOMContentLoaded', () => {
+  // Will be started in showApp() — no-op here unless already logged in
+});
+
+// ══════════════════════════════════════════════════════
+// MESSAGES
+// ══════════════════════════════════════════════════════
+let allMessages = [];
+let msgTab = 'unanswered';
+
+// Tab switching
+document.querySelectorAll('.msg-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.msg-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    msgTab = btn.dataset.tab;
+    renderMessages();
+  });
+});
+
+async function loadMessages() {
+  const list = document.getElementById('msgAdminList');
+  list.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    allMessages = await api('GET', '/messages');
+    const unanswered = allMessages.filter(m => !m.isAnswered).length;
+    document.getElementById('msgCount').textContent = `${allMessages.length} total · ${unanswered} unanswered`;
+    const badge = document.getElementById('msgBadge');
+    if (unanswered > 0) { badge.textContent = unanswered; badge.style.display = 'inline-flex'; }
+    else badge.style.display = 'none';
+    renderMessages();
+  } catch (e) {
+    list.innerHTML = `<div class="empty-state">${esc(e.message)}</div>`;
+  }
+}
+
+function renderMessages() {
+  const list = document.getElementById('msgAdminList');
+  const filtered = allMessages.filter(m => msgTab === 'unanswered' ? !m.isAnswered : m.isAnswered);
+  if (!filtered.length) { list.innerHTML = '<div class="empty-state">No messages here.</div>'; return; }
+
+  list.innerHTML = filtered.map(m => `
+    <div class="msg-admin-card" id="msgcard-${esc(m._id)}">
+      <div class="msg-admin-meta">
+        <span class="msg-admin-name">${esc(m.name)}</span>
+        <span class="msg-admin-phone">${esc(m.phone)}</span>
+        <span class="msg-admin-date">${new Date(m.createdAt).toLocaleString('id-ID')}</span>
+        <button class="msg-admin-del" onclick="deleteMessage('${esc(m._id)}')">Delete</button>
+      </div>
+      <p class="msg-admin-text">${esc(m.message)}</p>
+      ${m.isAnswered
+        ? `<div class="msg-admin-answered"><span class="msg-admin-answered-label">Your answer:</span><p class="msg-admin-answer-text">${esc(m.answer)}</p></div>`
+        : `<div class="msg-admin-reply">
+            <textarea class="admin-input msg-admin-textarea" id="ans-${esc(m._id)}" placeholder="Type your answer…" rows="3"></textarea>
+            <button class="btn-primary msg-admin-send" onclick="answerMessage('${esc(m._id)}')">Send Answer</button>
+           </div>`
+      }
+    </div>
+  `).join('');
+}
+
+async function answerMessage(id) {
+  const textarea = document.getElementById('ans-' + id);
+  const answer = textarea ? textarea.value.trim() : '';
+  if (!answer) { toast('Please type an answer first.', 'error'); return; }
+  try {
+    await api('PUT', `/messages/${id}/answer`, { answer });
+    toast('Answer sent!');
+    await loadMessages();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function deleteMessage(id) {
+  if (!confirm('Delete this message?')) return;
+  try {
+    await api('DELETE', `/messages/${id}`);
+    toast('Message deleted.');
+    await loadMessages();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
 

@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   try {
     const s = await Seo.findOne();
     res.json(s || {});
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // PUT /api/seo — admin
@@ -24,7 +24,7 @@ router.put('/', auth, upload.single('ogImage'), async (req, res) => {
     }
     const s = await Seo.findOneAndUpdate({}, data, { new: true, upsert: true });
     res.json(s);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 module.exports = router;

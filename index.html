@@ -96,6 +96,7 @@
 
   <!-- ===== HERO ===== -->
   <section class="hero" id="home">
+    <canvas class="hero-grid" id="heroGrid" aria-hidden="true"></canvas>
     <canvas class="hero-particles" id="heroParticles" aria-hidden="true"></canvas>
     <!-- Big outlined text behind everything -->
     <div class="hero-bg-text" aria-hidden="true">
@@ -260,8 +261,39 @@
     <span class="grid-orb" style="--col:22; --dur:3.2s; --delay:1.8s; --size:9px"></span>
   </div>
 
+<!-- Three.js -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.min.js"></script>
+
+<!-- ===== ANONYMOUS MESSAGE BUTTON + POPUP ===== -->
+<button class="msg-toggle" id="msgToggle" aria-label="Send anonymous message">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <path d="M2 2h12v9H9l-3 2.5V11H2V2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+  </svg>
+  <span>Anonymous Message</span>
+</button>
+
+<div class="msg-popup" id="msgPopup" aria-hidden="true">
+  <p class="msg-popup-title">Send a Message</p>
+  <form class="msg-form" id="msgForm" novalidate>
+    <label class="msg-anon-label">
+      <input type="checkbox" id="msgAnon" class="msg-anon-check">
+      <span class="msg-anon-box"></span>
+      <span class="msg-anon-text">Anonymous</span>
+    </label>
+    <div id="msgIdentity">
+      <input class="msg-input" type="text" id="msgName" placeholder="Name (optional)" maxlength="100">
+      <input class="msg-input" type="text" id="msgPhone" placeholder="Phone / Instagram (optional)" maxlength="50">
+    </div>
+    <textarea class="msg-input msg-textarea" id="msgText" placeholder="Your message..." maxlength="1000" required></textarea>
+    <p class="msg-error" id="msgError"></p>
+    <button class="msg-submit" type="submit" id="msgSubmit">Send Message</button>
+  </form>
+  <a class="msg-qa-link" href="qa.html">View answered Q&amp;A →</a>
+</div>
+
 <script src="api.js"></script>
 <script src="script.js"></script>
+<script src="gl.js"></script>
 <script src="tracker.js"></script>
 
 <script type="application/ld+json">
@@ -297,5 +329,6 @@
   }
 }
 </script>
+<script src="cursor.js"></script>
 </body>
 </html>

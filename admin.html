@@ -86,6 +86,16 @@
         Submissions
         <span class="sidebar-badge" id="submissionsBadge" style="display:none"></span>
       </button>
+      <button class="sidebar-link" data-section="editrequests">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M10.5 2.5L12.5 4.5L5 12H3V10L10.5 2.5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        Edit Requests
+        <span class="sidebar-badge" id="notifBadge" style="display:none"></span>
+      </button>
+      <button class="sidebar-link" data-section="messages">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M2 2h11v9H8l-3 2.5V11H2V2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+        Messages
+        <span class="sidebar-badge" id="msgBadge" style="display:none"></span>
+      </button>
     </nav>
 
     <div class="sidebar-divider"></div>
@@ -478,6 +488,43 @@
         <div class="empty-state" id="submissionsEmpty" style="display:none">No pending submissions.</div>
       </section>
 
+      <!-- ── EDIT REQUESTS ── -->
+      <section id="sec-editrequests" style="display:none">
+        <div class="sec-header">
+          <div>
+            <span class="sec-title">Edit Requests</span>
+            <span class="sec-count" id="editRequestsCount"></span>
+          </div>
+          <div class="er-filter-tabs">
+            <button class="er-filter-btn active" data-er-filter="pending">Pending</button>
+            <button class="er-filter-btn" data-er-filter="approved">Approved</button>
+            <button class="er-filter-btn" data-er-filter="rejected">Rejected</button>
+          </div>
+        </div>
+        <p class="sec-hint">Review edit requests submitted by project collaborators. Approve to apply changes, or reject to dismiss.</p>
+        <div id="editRequestsList">
+          <div class="empty-state">Loading…</div>
+        </div>
+      </section>
+
+      <!-- ── MESSAGES ── -->
+      <section id="sec-messages" style="display:none">
+        <div class="sec-header">
+          <div>
+            <span class="sec-title">Anonymous Messages</span>
+            <span class="sec-sub" id="msgCount">–</span>
+          </div>
+          <button class="btn-secondary" onclick="loadMessages()">Refresh</button>
+        </div>
+        <div class="msg-admin-tabs">
+          <button class="msg-tab active" data-tab="unanswered">Unanswered</button>
+          <button class="msg-tab" data-tab="answered">Answered</button>
+        </div>
+        <div id="msgAdminList" class="msg-admin-list">
+          <div class="empty-state">Loading…</div>
+        </div>
+      </section>
+
     </div><!-- /admin-content -->
   </div><!-- /admin-main -->
 </div><!-- /admin-app -->
@@ -500,6 +547,34 @@
 <!-- Toast -->
 <div class="admin-toast" id="adminToast"></div>
 
+<!-- Editor.js and plugins -->
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@latest/dist/editorjs.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/header@latest/dist/header.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/list@latest/dist/list.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/quote@latest/dist/quote.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/code@latest/dist/code.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/delimiter@latest/dist/delimiter.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/table@latest/dist/table.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/checklist@latest/dist/checklist.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/warning@latest/dist/warning.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@latest/dist/marker.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@latest/dist/inline-code.umd.min.js"></script>
+<script>
+  // Normalize Editor.js plugin global names (UMD builds vary)
+  // Header plugin exports as 'Header' globally
+  // List plugin exports as 'List' globally
+  // Quote, CodeTool, Delimiter, Table, Checklist, Warning, Marker, InlineCode are standard names
+  window.Header     = window.Header     || window.HeaderTool || undefined;
+  window.List       = window.List       || undefined;
+  window.Quote      = window.Quote      || undefined;
+  window.CodeTool   = window.CodeTool   || undefined;
+  window.Delimiter  = window.Delimiter  || undefined;
+  window.Table      = window.Table      || undefined;
+  window.Checklist  = window.Checklist  || undefined;
+  window.Warning    = window.Warning    || undefined;
+  window.Marker     = window.Marker     || undefined;
+  window.InlineCode = window.InlineCode || undefined;
+</script>
 <script src="admin.js"></script>
 </body>
 </html>

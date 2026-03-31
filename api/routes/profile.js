@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   try {
     const profile = await Profile.findOne();
     res.json(profile || {});
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 // PUT /api/profile  — admin (upsert)
@@ -23,7 +23,7 @@ router.put('/', auth, upload.single('photo'), async (req, res) => {
     }
     const profile = await Profile.findOneAndUpdate({}, data, { new: true, upsert: true });
     res.json(profile);
-  } catch (err) { res.status(400).json({ error: err.message }); }
+  } catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 module.exports = router;

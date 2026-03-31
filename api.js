@@ -24,29 +24,18 @@ function makeProjectCard(p, showArrowBtn = false) {
   const arrowHtml = showArrowBtn
     ? `<a href="projects.html" class="projects-all-btn projects-all-btn--card" aria-label="See all projects"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="#E8F55F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>`
     : '';
-  const imgStyle = p.image ? `background-image:url('${p.image}')` : '';
+  const imgUrl   = p.images?.[0]?.url || p.image || '';
+  const imgStyle = imgUrl ? `background-image:url('${imgUrl}')` : '';
 
   card.innerHTML = `
     <div class="project-img-glass${showArrowBtn ? ' project-img-glass--last' : ''}">
-      <div class="project-img${p.image ? '' : ' project-img--empty'}" ${imgStyle ? `style="${imgStyle}"` : ''}></div>
+      <div class="project-img${imgUrl ? '' : ' project-img--empty'}" ${imgStyle ? `style="${imgStyle}"` : ''}></div>
       ${arrowHtml}
     </div>
     <h3></h3>
-    <span class="project-views"></span>
     <a class="pill-btn" href="case.html?id=${p._id}">Read Case <img src="assets/arrow.svg" alt="" width="19" height="19"></a>`;
 
   card.querySelector('h3').textContent = p.title;
-
-  // Async: fetch view count + popular badge
-  if (p._id) {
-    fetch((window.API_BASE || '/api') + '/analytics/views/' + p._id)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data || !data.count) return;
-        const viewEl = card.querySelector('.project-views');
-        if (viewEl) viewEl.textContent = data.count + (data.count === 1 ? ' view' : ' views');
-      }).catch(() => {});
-  }
   return card;
 }
 
@@ -61,34 +50,11 @@ async function loadFeaturedProjects() {
       const card = makeProjectCard(p, i === projects.length - 1);
       grid.appendChild(card);
     });
-    // re-observe for scroll reveal
-    grid.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-    // Stamp "Popular" badge on hot projects
-    stampPopularBadges();
   } catch (err) {
     console.warn('Could not load projects:', err.message);
   }
 }
 
-// Fetch top project IDs this week and add badge to their cards
-async function stampPopularBadges() {
-  try {
-    const popular = await fetch((window.API_BASE || '/api') + '/analytics/popular').then(r => r.ok ? r.json() : []);
-    if (!popular.length) return;
-    popular.forEach(id => {
-      const card = document.querySelector(`.project-card [href*="id=${id}"]`)?.closest('.project-card');
-      if (!card) return;
-      const h3 = card.querySelector('h3');
-      if (h3 && !card.querySelector('.project-popular-badge')) {
-        const badge = document.createElement('span');
-        badge.className = 'project-popular-badge';
-        badge.textContent = '🔥 Popular';
-        h3.after(badge);
-      }
-    });
-  } catch (e) {}
-}
 
 // Load all projects for projects.html — grouped by month/year
 async function loadAllProjects() {
@@ -161,6 +127,9 @@ async function loadAllProjects() {
 
     // re-observe
     wrapper.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Notify GSAP ScrollTrigger that project cards are ready
+    window.dispatchEvent(new CustomEvent('porto:projectsLoaded'));
 
     // Stamp "Popular" badge on hot projects
     stampPopularBadges();
