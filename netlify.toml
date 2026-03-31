@@ -1,7 +1,7 @@
 [build]
   publish = "."
   functions = "api/netlify/functions"
-  command = "npm install"
+  command = "npm install --prefix api"
 
 # ── Block sensitive paths ───────────────────────────
 [[redirects]]
