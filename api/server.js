@@ -96,6 +96,7 @@ app.use('/api/profile',       require('./routes/profile'));
 app.use('/api/seo',           require('./routes/seo'));
 app.use('/api/analytics',     require('./routes/analytics'));
 app.use('/api/messages',      require('./routes/messages'));
+app.use('/api/settings',      require('./routes/settings'));
 
 // Health check
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }));

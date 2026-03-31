@@ -373,6 +373,13 @@ body {
   color: var(--yellow);
   text-shadow: 0 0 12px rgba(232,245,95,0.35);
 }
+.sec-hint {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+html.light .sec-hint { color: rgba(0,0,0,0.4); }
 .sec-count {
   font-size: 12px;
   color: var(--muted);
@@ -2196,3 +2203,19 @@ html.light .msg-admin-text  { color: rgba(0,0,0,0.75); }
 html.light .msg-admin-answered { border-top-color: rgba(0,0,0,0.08); }
 html.light .msg-admin-answer-text { color: rgba(0,0,0,0.6); }
 html.light .msg-admin-reply { border-top-color: rgba(0,0,0,0.08); }
+
+/* ── Settings Panel ── */
+.settings-howto {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.6;
+}
+.settings-howto li strong { color: rgba(255,255,255,0.9); }
+html.light .settings-howto { color: rgba(0,0,0,0.6); }
+html.light .settings-howto li strong { color: rgba(0,0,0,0.85); }
+#smtpStatus { min-height: 16px; font-size: 12px; }

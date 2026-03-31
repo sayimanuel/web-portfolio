@@ -114,7 +114,7 @@ const sectionTitles = {
   projects: 'Projects', testimonials: 'Testimonials',
   experience: 'Experience', skills: 'Skills', profile: 'Profile',
   seo: 'SEO Settings', submissions: 'Submissions', analytics: 'Analytics',
-  editrequests: 'Edit Requests', messages: 'Messages',
+  editrequests: 'Edit Requests', messages: 'Messages', settings: 'Settings',
 };
 
 async function showApp() {
@@ -189,6 +189,7 @@ function loadSection(name) {
   if (name === 'analytics')    fetchAnalytics();
   if (name === 'editrequests') fetchEditRequests();
   if (name === 'messages')     loadMessages();
+  if (name === 'settings')     loadSettings();
 }
 
 // ══════════════════════════════════════════════════════
@@ -2009,4 +2010,68 @@ async function deleteMessage(id) {
     toast(e.message, 'error');
   }
 }
+
+// ══════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════
+async function loadSettings() {
+  const statusEl = document.getElementById('smtpStatus');
+  statusEl.textContent = 'Loading…';
+  try {
+    const data = await api('GET', '/settings/smtp');
+    document.getElementById('smtpUser').value     = data.gmailUser || '';
+    document.getElementById('smtpAdminUrl').value = data.adminUrl  || '';
+    const hint = document.getElementById('smtpPassHint');
+    hint.textContent = data.hasPassword ? 'App password is saved. Leave blank to keep unchanged.' : 'No app password saved yet.';
+    statusEl.textContent = '';
+  } catch (e) {
+    statusEl.textContent = 'Failed to load: ' + e.message;
+  }
+}
+
+document.getElementById('saveSmtpBtn')?.addEventListener('click', async () => {
+  const btn      = document.getElementById('saveSmtpBtn');
+  const statusEl = document.getElementById('smtpStatus');
+  const body = {
+    gmailUser:  document.getElementById('smtpUser').value.trim(),
+    adminUrl:   document.getElementById('smtpAdminUrl').value.trim(),
+  };
+  const pass = document.getElementById('smtpPass').value;
+  if (pass) body.gmailAppPassword = pass;
+
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+  statusEl.textContent = '';
+  try {
+    await api('PUT', '/settings/smtp', body);
+    toast('SMTP settings saved!');
+    document.getElementById('smtpPass').value = '';
+    await loadSettings();
+  } catch (e) {
+    toast(e.message, 'error');
+    statusEl.textContent = e.message;
+  } finally {
+    btn.textContent = 'Save SMTP Settings';
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('testSmtpBtn')?.addEventListener('click', async () => {
+  const btn      = document.getElementById('testSmtpBtn');
+  const statusEl = document.getElementById('smtpStatus');
+  btn.textContent = 'Sending…';
+  btn.disabled = true;
+  statusEl.textContent = '';
+  try {
+    await api('POST', '/settings/smtp/test');
+    toast('Test email sent! Check your inbox.');
+    statusEl.textContent = '✓ Test email sent successfully.';
+  } catch (e) {
+    toast(e.message, 'error');
+    statusEl.textContent = '✗ ' + e.message;
+  } finally {
+    btn.textContent = 'Send Test Email';
+    btn.disabled = false;
+  }
+});
 

@@ -1,24 +1,40 @@
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD, // Gmail App Password (16-char)
-  },
-});
+// Load SMTP config: DB first, env vars as fallback
+async function getSmtpConfig() {
+  try {
+    const Settings = require('../models/Settings');
+    const doc = await Settings.findOne({ key: 'smtp' });
+    const v   = doc?.value || {};
+    return {
+      user:     v.gmailUser        || process.env.GMAIL_USER        || '',
+      pass:     v.gmailAppPassword || process.env.GMAIL_APP_PASSWORD || '',
+      adminUrl: v.adminUrl         || process.env.ADMIN_URL          || 'https://helloimanuel.netlify.app/admin.html',
+    };
+  } catch {
+    return {
+      user:     process.env.GMAIL_USER        || '',
+      pass:     process.env.GMAIL_APP_PASSWORD || '',
+      adminUrl: process.env.ADMIN_URL          || 'https://helloimanuel.netlify.app/admin.html',
+    };
+  }
+}
 
-const ADMIN_URL = process.env.ADMIN_URL || 'https://helloimanuel.netlify.app/admin.html';
-const FROM      = `"Porto Notif" <${process.env.GMAIL_USER}>`;
-const TO        = process.env.GMAIL_USER;
+function makeTransporter(user, pass) {
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+  });
+}
 
 // ── Edit Request notification ─────────────────────────────────────────────
 async function sendEditRequestNotif(editReq) {
-  const fields = Object.keys(editReq.fieldChanges || {});
+  const { user, pass, adminUrl } = await getSmtpConfig();
+  if (!user || !pass) return;
+  const fields    = Object.keys(editReq.fieldChanges || {});
   const hasImages = editReq.newImages?.length > 0;
-
-  await transporter.sendMail({
-    from: FROM, to: TO,
+  await makeTransporter(user, pass).sendMail({
+    from: `"Porto Notif" <${user}>`, to: user,
     subject: `📝 Edit Request: ${editReq.projectTitle}`,
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:auto">
@@ -33,7 +49,7 @@ async function sendEditRequestNotif(editReq) {
           <tr><td style="padding:6px 0;color:#555">Message</td>
               <td style="padding:6px 0">${editReq.message || '—'}</td></tr>
         </table>
-        <a href="${ADMIN_URL}" style="display:inline-block;margin-top:16px;padding:10px 20px;
+        <a href="${adminUrl}" style="display:inline-block;margin-top:16px;padding:10px 20px;
            background:#e8f55f;color:#111;font-weight:bold;text-decoration:none;border-radius:6px">
           Review in Dashboard →
         </a>
@@ -44,8 +60,10 @@ async function sendEditRequestNotif(editReq) {
 
 // ── Testimonial notification ───────────────────────────────────────────────
 async function sendTestimonialNotif(testi) {
-  await transporter.sendMail({
-    from: FROM, to: TO,
+  const { user, pass, adminUrl } = await getSmtpConfig();
+  if (!user || !pass) return;
+  await makeTransporter(user, pass).sendMail({
+    from: `"Porto Notif" <${user}>`, to: user,
     subject: `⭐ New Testimonial from ${testi.name}`,
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:auto">
@@ -58,7 +76,7 @@ async function sendTestimonialNotif(testi) {
           <tr><td style="padding:6px 0;color:#555">Quote</td>
               <td style="padding:6px 0;font-style:italic">"${testi.quote}"</td></tr>
         </table>
-        <a href="${ADMIN_URL}" style="display:inline-block;margin-top:16px;padding:10px 20px;
+        <a href="${adminUrl}" style="display:inline-block;margin-top:16px;padding:10px 20px;
            background:#e8f55f;color:#111;font-weight:bold;text-decoration:none;border-radius:6px">
           Review in Dashboard →
         </a>
@@ -69,8 +87,10 @@ async function sendTestimonialNotif(testi) {
 
 // ── Project submission notification ───────────────────────────────────────
 async function sendProjectSubmitNotif(project) {
-  await transporter.sendMail({
-    from: FROM, to: TO,
+  const { user, pass, adminUrl } = await getSmtpConfig();
+  if (!user || !pass) return;
+  await makeTransporter(user, pass).sendMail({
+    from: `"Porto Notif" <${user}>`, to: user,
     subject: `🚀 New Project Submission: ${project.title}`,
     html: `
       <div style="font-family:sans-serif;max-width:560px;margin:auto">
@@ -83,7 +103,7 @@ async function sendProjectSubmitNotif(project) {
           <tr><td style="padding:6px 0;color:#555">Category</td>
               <td style="padding:6px 0">${project.category} / ${project.type}</td></tr>
         </table>
-        <a href="${ADMIN_URL}" style="display:inline-block;margin-top:16px;padding:10px 20px;
+        <a href="${adminUrl}" style="display:inline-block;margin-top:16px;padding:10px 20px;
            background:#e8f55f;color:#111;font-weight:bold;text-decoration:none;border-radius:6px">
           Review in Dashboard →
         </a>
@@ -92,4 +112,24 @@ async function sendProjectSubmitNotif(project) {
   });
 }
 
-module.exports = { sendEditRequestNotif, sendTestimonialNotif, sendProjectSubmitNotif };
+// ── Test SMTP connection ──────────────────────────────────────────────────
+async function testSmtp() {
+  const { user, pass, adminUrl } = await getSmtpConfig();
+  if (!user || !pass) throw new Error('SMTP not configured. Set Gmail User and App Password first.');
+  const t = makeTransporter(user, pass);
+  await t.verify();
+  await t.sendMail({
+    from: `"Porto Notif" <${user}>`, to: user,
+    subject: '✅ SMTP Test — Porto Dashboard',
+    html: `<div style="font-family:sans-serif;max-width:400px;margin:auto">
+      <h2 style="color:#1a1a2e">SMTP is working!</h2>
+      <p>This test email was sent from your portfolio dashboard.</p>
+      <a href="${adminUrl}" style="display:inline-block;margin-top:12px;padding:10px 20px;
+         background:#e8f55f;color:#111;font-weight:bold;text-decoration:none;border-radius:6px">
+        Go to Dashboard →
+      </a>
+    </div>`,
+  });
+}
+
+module.exports = { sendEditRequestNotif, sendTestimonialNotif, sendProjectSubmitNotif, testSmtp };
