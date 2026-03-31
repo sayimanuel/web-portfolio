@@ -252,8 +252,8 @@ async function loadExperience() {
 
       div.innerHTML = `
         ${imgEl}
-        <span class="exp-role"></span>
-        <div class="exp-right">
+        <div class="exp-info">
+          <span class="exp-role"></span>
           <span class="exp-company"></span>
           <span class="exp-period"></span>
         </div>`;

@@ -393,21 +393,12 @@ tabs.forEach(tab => {
   const identity  = document.getElementById('msgIdentity');
   if (!toggle || !popup) return;
 
-  // Hide button on mobile when hero section (or footer) is in view
-  const heroEl   = document.getElementById('home');
+  // Hide button on mobile when footer/contact section is in view
   const footerEl = document.querySelector('footer') || document.querySelector('.contact');
   function updateMsgVisibility() {
-    if (window.innerWidth > 768) { toggle.classList.remove('msg-toggle--hidden'); return; }
-    const vMid = window.scrollY + window.innerHeight / 2;
-    let hide = false;
-    if (heroEl) {
-      const top = heroEl.offsetTop, bot = top + heroEl.offsetHeight;
-      if (vMid >= top && vMid <= bot) hide = true;
-    }
-    if (footerEl) {
-      const top = footerEl.offsetTop, bot = top + footerEl.offsetHeight;
-      if (vMid >= top && vMid <= bot) hide = true;
-    }
+    if (!footerEl || window.innerWidth > 768) { toggle.classList.remove('msg-toggle--hidden'); return; }
+    const rect = footerEl.getBoundingClientRect();
+    const hide = rect.top < window.innerHeight && rect.bottom > 0;
     toggle.classList.toggle('msg-toggle--hidden', hide);
   }
   window.addEventListener('scroll', updateMsgVisibility, { passive: true });

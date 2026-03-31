@@ -758,8 +758,7 @@ html.light .msg-qa-link:hover { color: #172851; }
 
 .exp-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  align-items: stretch;
   gap: 20px;
   padding: 18px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
@@ -770,15 +769,15 @@ html.light .msg-qa-link:hover { color: #172851; }
 
 /* ── Experience thumbnail (left) ── */
 .exp-thumb {
-  width: 70px;
-  min-width: 70px;
-  align-self: stretch;   /* stretch to full row height */
+  width: 80px;
+  min-width: 80px;
   border-radius: 14px;
   object-fit: cover;
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.1);
   display: block;
   flex-shrink: 0;
+  align-self: stretch;
 }
 .exp-thumb--default {
   display: flex;
@@ -789,8 +788,14 @@ html.light .msg-qa-link:hover { color: #172851; }
 html.light .exp-thumb { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); }
 html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
 
-/* role grows to fill space */
-.exp-role { flex: 1; }
+/* ── Text column: role / company / period stacked ── */
+.exp-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+}
 
 .exp-role,
 .exp-company {
@@ -801,19 +806,18 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
   font-family: 'Quantico', sans-serif;
   font-size: 28px;
   font-weight: 400;
-  line-height: 40px;
+  line-height: 1.2;
   text-transform: capitalize;
 }
-.exp-company { display: block; }
-.exp-right { text-align: right; }
 
 .exp-period {
-  color: #FFF;
+  color: rgba(255,255,255,0.5);
   font-family: 'Quantico', sans-serif;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 400;
-  line-height: 40px;
+  line-height: 1.4;
   text-transform: capitalize;
+  margin-top: 2px;
 }
 
 /* ── ABOUT ── */
@@ -1792,12 +1796,10 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
 
   /* Experience */
   .experience { padding: 60px 24px; }
-  .exp-item   { flex-wrap: nowrap; align-items: stretch; gap: 12px; padding: 16px 0; }
-  .exp-thumb  { width: 54px; min-width: 54px; border-radius: 10px; align-self: stretch; }
-  .exp-role   { flex: 1; }
-  .exp-right  { text-align: left; }
-  .exp-role, .exp-company { font-size: 20px; line-height: 28px; }
-  .exp-period { font-size: 15px; line-height: 22px; }
+  .exp-item  { gap: 14px; padding: 16px 0; }
+  .exp-thumb { width: 60px; min-width: 60px; border-radius: 10px; }
+  .exp-role, .exp-company { font-size: 20px; line-height: 1.2; }
+  .exp-period { font-size: 15px; }
 
   /* About */
   .about      { padding: 80px 24px; }
