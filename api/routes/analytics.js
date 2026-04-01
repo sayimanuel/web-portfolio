@@ -5,9 +5,26 @@ const auth      = require('../middleware/auth');
 // POST /api/analytics/track — public
 router.post('/track', async (req, res) => {
   try {
-    const { event, page, projectId, referrer, sessionId, isNew } = req.body;
+    const { event, page, projectId, referrer, sessionId, visitorId } = req.body;
     if (!event) return res.status(400).json({ error: 'event required' });
-    await Analytics.create({ event, page: page || '', projectId: projectId || '', referrer: referrer || '', sessionId: sessionId || '', isNew: !!isNew });
+
+    // Server determines isNew — has this visitorId ever been seen before?
+    const safeVid = visitorId ? String(visitorId).replace(/[^a-z0-9\-]/gi, '').slice(0, 64) : '';
+    let isNew = true;
+    if (safeVid) {
+      const seen = await Analytics.exists({ visitorId: safeVid });
+      isNew = !seen;
+    }
+
+    await Analytics.create({
+      event,
+      page:      page      ? String(page).slice(0, 200)      : '',
+      projectId: projectId ? String(projectId).slice(0, 100) : '',
+      referrer:  referrer  ? String(referrer).slice(0, 300)  : '',
+      sessionId: sessionId ? String(sessionId).slice(0, 64)  : '',
+      visitorId: safeVid,
+      isNew,
+    });
     res.json({ ok: true });
   } catch { res.status(400).json({ error: 'Invalid request' }); }
 });
@@ -19,20 +36,26 @@ router.get('/summary', auth, async (req, res) => {
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const sincePrev = new Date(Date.now() - days * 2 * 24 * 60 * 60 * 1000);
 
-    const [totalViews, prevViews, projectViews, contactClicks, allSessions, returnCount] = await Promise.all([
+    const [totalViews, prevViews, projectViews, contactClicks, allSessions, uniqueVisitors, newVisitorIds] = await Promise.all([
       Analytics.countDocuments({ event: 'pageview', createdAt: { $gte: since } }),
       Analytics.countDocuments({ event: 'pageview', createdAt: { $gte: sincePrev, $lt: since } }),
       Analytics.countDocuments({ event: 'project_view', createdAt: { $gte: since } }),
       Analytics.countDocuments({ event: 'contact_click', createdAt: { $gte: since } }),
       Analytics.distinct('sessionId', { createdAt: { $gte: since } }),
-      Analytics.countDocuments({ isNew: false, event: 'pageview', createdAt: { $gte: since } }),
+      // Unique visitors in period (by visitorId)
+      Analytics.distinct('visitorId', { visitorId: { $ne: '' }, createdAt: { $gte: since } }),
+      // Visitors who first appeared in this period (isNew=true)
+      Analytics.distinct('visitorId', { visitorId: { $ne: '' }, isNew: true, createdAt: { $gte: since } }),
     ]);
 
-    const uniqueSessions = allSessions.length;
-    const trend = prevViews > 0 ? Math.round((totalViews - prevViews) / prevViews * 100) : null;
-    const convRate = uniqueSessions > 0 ? Math.round(contactClicks / uniqueSessions * 100) : 0;
+    const uniqueSessions  = allSessions.length;
+    const totalVisitors   = uniqueVisitors.length;
+    const newCount        = newVisitorIds.length;
+    const returnCount     = Math.max(0, totalVisitors - newCount);
+    const trend     = prevViews > 0 ? Math.round((totalViews - prevViews) / prevViews * 100) : null;
+    const convRate  = uniqueSessions > 0 ? Math.round(contactClicks / uniqueSessions * 100) : 0;
 
-    res.json({ totalViews, uniqueSessions, projectViews, contactClicks, trend, convRate, newVisitors: uniqueSessions - returnCount, returnCount });
+    res.json({ totalViews, uniqueSessions, projectViews, contactClicks, trend, convRate, newVisitors: newCount, returnCount, totalVisitors });
   } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
