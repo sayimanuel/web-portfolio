@@ -1061,6 +1061,49 @@ html.light .exp-thumb--default { color: rgba(23,40,81,0.35); }
 .review-submit:hover { background: rgba(232,245,95,0.22); }
 .review-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* Avatar upload in review form */
+.review-avatar-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  width: fit-content;
+}
+.review-avatar-preview {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: border-color 0.2s;
+}
+.review-avatar-upload:hover .review-avatar-preview {
+  border-color: rgba(232,245,95,0.5);
+}
+.review-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.review-avatar-text {
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+}
+
+/* Testimonial card avatar image */
+.testi-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 /* ── Searchable select (RSS) ── */
 .rss-wrap {
   position: relative;
@@ -2062,6 +2105,8 @@ html.light .review-label { color: rgba(13,13,43,0.6); }
 html.light .review-input { background: rgba(0,0,60,0.04); border-color: rgba(0,0,60,0.12); color: #0d0d2b; }
 html.light .review-input::placeholder { color: rgba(13,13,43,0.3); }
 html.light .review-input:focus { border-color: rgba(200,168,0,0.5); }
+html.light .review-avatar-preview { border-color: rgba(0,0,60,0.18); background: rgba(0,0,60,0.04); }
+html.light .review-avatar-text { color: rgba(0,0,60,0.4); }
 html.light .review-submit { background: #c8a800; color: #fff; }
 html.light .rss-control { background: rgba(0,0,60,0.04); border-color: rgba(0,0,60,0.12); }
 html.light .rss-input { color: #0d0d2b; }

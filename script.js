@@ -322,6 +322,30 @@ tabs.forEach(tab => {
   closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
+  // Avatar preview
+  const avatarInput   = document.getElementById('reviewAvatar');
+  const avatarPreview = document.getElementById('reviewAvatarPreview');
+  const avatarText    = document.getElementById('reviewAvatarText');
+  if (avatarInput) {
+    avatarInput.addEventListener('change', () => {
+      const file = avatarInput.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        avatarInput.value = '';
+        alert('Photo must be under 2MB.');
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      avatarPreview.innerHTML = `<img src="${url}" alt="preview">`;
+      if (avatarText) avatarText.textContent = file.name;
+    });
+  }
+  function resetAvatar() {
+    if (avatarInput)  avatarInput.value = '';
+    if (avatarPreview) avatarPreview.innerHTML = `<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/><path d="M3 20c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+    if (avatarText)   avatarText.textContent = 'Click to upload photo';
+  }
+
   const submitBtn = form.querySelector('.review-submit');
 
   form.addEventListener('submit', async (e) => {
@@ -339,7 +363,8 @@ tabs.forEach(tab => {
         // API mode: POST to backend
         const projectId    = document.getElementById('reviewProjectId')?.value || '';
         const projectTitle = document.getElementById('rssInput')?.value.trim() || '';
-        await window.portoApi.submitReview(name, role, quote, projectId, projectTitle);
+        const avatarFile   = document.getElementById('reviewAvatar')?.files[0] || null;
+        await window.portoApi.submitReview(name, role, quote, projectId, projectTitle, avatarFile);
         submitBtn.textContent = 'Sent! Thank you.';
       } else {
         // Fallback: add card to DOM directly (no backend)
@@ -375,6 +400,7 @@ tabs.forEach(tab => {
       submitBtn.textContent = 'Submit Review';
       submitBtn.disabled = false;
       form.reset();
+      resetAvatar();
       closeModal();
     }, 1800);
   });

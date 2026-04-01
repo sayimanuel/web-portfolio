@@ -215,6 +215,16 @@
           <input class="review-input" id="reviewName" type="text" placeholder="e.g. Sarah K." required>
         </div>
         <div class="review-field">
+          <label class="review-label">Photo <span class="review-label-opt">optional</span></label>
+          <label class="review-avatar-upload" id="reviewAvatarLabel" aria-label="Upload your photo">
+            <input type="file" id="reviewAvatar" accept="image/jpeg,image/png,image/webp" style="display:none">
+            <span class="review-avatar-preview" id="reviewAvatarPreview">
+              <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><circle cx="11" cy="8" r="4" stroke="rgba(255,255,255,0.45)" stroke-width="1.5"/><path d="M3 20c0-4.418 3.582-8 8-8s8 3.582 8 8" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </span>
+            <span class="review-avatar-text" id="reviewAvatarText">Click to upload photo</span>
+          </label>
+        </div>
+        <div class="review-field">
           <label class="review-label" for="reviewRole">Role / Company</label>
           <input class="review-input" id="reviewRole" type="text" placeholder="e.g. Product Manager, Anyrecipe">
         </div>

@@ -22,4 +22,22 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // max 5MB
 });
 
-module.exports = { upload, cloudinary };
+// Smaller upload for user avatars — 200×200 face crop, max 2MB
+const avatarStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder:          'porto/avatars',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation:  [{ width: 200, height: 200, crop: 'fill', gravity: 'face', quality: 'auto', fetch_format: 'auto' }],
+  },
+});
+
+const uploadAvatar = multer({
+  storage: avatarStorage,
+  limits:  { fileSize: 2 * 1024 * 1024 }, // max 2MB
+  fileFilter: (_req, file, cb) => {
+    cb(null, /^image\/(jpeg|png|webp)$/.test(file.mimetype));
+  },
+});
+
+module.exports = { upload, uploadAvatar, cloudinary };

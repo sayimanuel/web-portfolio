@@ -144,10 +144,13 @@ async function loadAllProjects() {
 function makeTestiCard(t) {
   const card = document.createElement('div');
   card.className = 'testi-card';
+  const avatarHtml = t.avatarUrl
+    ? `<img class="testi-avatar-img" src="${t.avatarUrl}" alt="${t.name}" loading="lazy">`
+    : `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3.5" stroke="rgba(255,255,255,0.6)" stroke-width="1.4"/><path d="M2 16c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="rgba(255,255,255,0.6)" stroke-width="1.4" stroke-linecap="round"/></svg>`;
   card.innerHTML = `
     <p class="testi-quote"></p>
     <div class="testi-footer">
-      <div class="testi-avatar"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3.5" stroke="rgba(255,255,255,0.6)" stroke-width="1.4"/><path d="M2 16c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="rgba(255,255,255,0.6)" stroke-width="1.4" stroke-linecap="round"/></svg></div>
+      <div class="testi-avatar">${avatarHtml}</div>
       <div class="testi-info"><span class="testi-name"></span><span class="testi-role"></span></div>
     </div>`;
   card.querySelector('.testi-quote').textContent = '\u201C' + t.quote + '\u201D';
@@ -193,13 +196,16 @@ async function loadTestimonials() {
   }
 }
 
-// Submit review → POST to API
-async function submitReview(name, role, quote, projectId, projectTitle) {
-  const res = await fetch(BASE_URL + '/testimonials', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, role, quote, projectId: projectId || '', projectTitle: projectTitle || '' }),
-  });
+// Submit review → POST to API (multipart to support optional avatar)
+async function submitReview(name, role, quote, projectId, projectTitle, avatarFile) {
+  const fd = new FormData();
+  fd.append('name',         name);
+  fd.append('role',         role         || '');
+  fd.append('quote',        quote);
+  fd.append('projectId',    projectId    || '');
+  fd.append('projectTitle', projectTitle || '');
+  if (avatarFile) fd.append('avatar', avatarFile);
+  const res = await fetch(BASE_URL + '/testimonials', { method: 'POST', body: fd });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }

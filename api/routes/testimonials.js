@@ -4,6 +4,7 @@ const Notification = require('../models/Notification');
 const auth        = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 const { sendTestimonialNotif } = require('../services/email');
+const { uploadAvatar, cloudinary } = require('../middleware/upload');
 
 const validateTesti = [
   body('name').isString().trim().isLength({ min: 1, max: 100 }),
@@ -35,14 +36,19 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/testimonials  — public (pending approval)
-router.post('/', validateTesti, async (req, res) => {
-  if (!validationResult(req).isEmpty()) return res.status(400).json({ error: 'Name and quote required' });
+router.post('/', uploadAvatar.single('avatar'), validateTesti, async (req, res) => {
+  if (!validationResult(req).isEmpty()) {
+    if (req.file?.filename) cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+    return res.status(400).json({ error: 'Name and quote required' });
+  }
   try {
     const { name, role, quote, projectId, projectTitle } = req.body;
     const testi = await Testimonial.create({
       name, role, quote,
       projectId:    projectId    || '',
       projectTitle: projectTitle || '',
+      avatarUrl:    req.file?.path     || '',
+      avatarId:     req.file?.filename || '',
       approved: false,
     });
 
@@ -85,7 +91,8 @@ router.patch('/:id/approve', auth, async (req, res) => {
 // DELETE /api/testimonials/:id  — admin
 router.delete('/:id', auth, async (req, res) => {
   try {
-    await Testimonial.findByIdAndDelete(req.params.id);
+    const testi = await Testimonial.findByIdAndDelete(req.params.id);
+    if (testi?.avatarId) cloudinary.uploader.destroy(testi.avatarId).catch(() => {});
     res.json({ message: 'Deleted' });
   } catch {
     res.status(500).json({ error: 'Internal server error' });
