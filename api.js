@@ -144,6 +144,10 @@ async function loadAllProjects() {
 function makeTestiCard(t) {
   const card = document.createElement('div');
   card.className = 'testi-card';
+  card.dataset.quote     = t.quote;
+  card.dataset.name      = t.name;
+  card.dataset.role      = t.role || '';
+  card.dataset.avatarUrl = t.avatarUrl || '';
   const avatarHtml = t.avatarUrl
     ? `<img class="testi-avatar-img" src="${t.avatarUrl}" alt="${t.name}" loading="lazy">`
     : `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3.5" stroke="rgba(255,255,255,0.6)" stroke-width="1.4"/><path d="M2 16c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="rgba(255,255,255,0.6)" stroke-width="1.4" stroke-linecap="round"/></svg>`;

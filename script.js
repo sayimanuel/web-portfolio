@@ -225,6 +225,51 @@ tabs.forEach(tab => {
   }
 })();
 
+// ── Testimonial detail popup ──
+(function () {
+  const popup     = document.getElementById('testiPopup');
+  const closeBtn  = document.getElementById('testiPopupClose');
+  if (!popup) return;
+
+  const DEFAULT_AVATAR_SVG = `<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="6" r="3.5" stroke="rgba(255,255,255,0.6)" stroke-width="1.4"/><path d="M2 16c0-3.866 3.134-7 7-7s7 3.134 7 7" stroke="rgba(255,255,255,0.6)" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+
+  function openPopup(data) {
+    document.getElementById('testiPopupQuote').textContent = data.quote;
+    document.getElementById('testiPopupName').textContent  = data.name;
+    document.getElementById('testiPopupRole').textContent  = data.role || '';
+    const av = document.getElementById('testiPopupAvatar');
+    av.innerHTML = data.avatarUrl
+      ? `<img class="testi-avatar-img" src="${data.avatarUrl}" alt="${data.name}" loading="lazy">`
+      : DEFAULT_AVATAR_SVG;
+    popup.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closePopup() {
+    popup.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  closeBtn.addEventListener('click', closePopup);
+  popup.addEventListener('click', (e) => { if (e.target === popup) closePopup(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopup(); });
+
+  // Delegate: click any .testi-card
+  document.addEventListener('click', (e) => {
+    const card = e.target.closest('.testi-card');
+    if (!card) return;
+    openPopup({
+      quote:     card.dataset.quote,
+      name:      card.dataset.name,
+      role:      card.dataset.role,
+      avatarUrl: card.dataset.avatarUrl || '',
+    });
+  });
+
+  // Expose so api.js can stamp data attributes on cards
+  window._testiPopup = { openPopup };
+})();
+
 // Add review modal
 (function () {
   const addBtn   = document.getElementById('testiAddBtn');
