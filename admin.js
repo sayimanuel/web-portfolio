@@ -114,7 +114,7 @@ const sectionTitles = {
   projects: 'Projects', testimonials: 'Testimonials',
   experience: 'Experience', skills: 'Skills', profile: 'Profile',
   seo: 'SEO Settings', submissions: 'Submissions', analytics: 'Analytics',
-  editrequests: 'Edit Requests', messages: 'Messages', settings: 'Settings',
+  editrequests: 'Edit Requests', messages: 'Messages',
 };
 
 async function showApp() {
@@ -184,12 +184,11 @@ function loadSection(name) {
   if (name === 'experience')   fetchExperience();
   if (name === 'skills')       fetchSkills();
   if (name === 'profile')      fetchProfile();
-  if (name === 'seo')          fetchSeo();
+  if (name === 'seo')          { fetchSeo(); loadSmtpIntoSeo(); }
   if (name === 'submissions')  fetchSubmissions();
   if (name === 'analytics')    fetchAnalytics();
   if (name === 'editrequests') fetchEditRequests();
   if (name === 'messages')     loadMessages();
-  if (name === 'settings')     loadSettings();
 }
 
 // ══════════════════════════════════════════════════════
@@ -1572,6 +1571,12 @@ async function fetchSeo() {
       const prev = document.getElementById('ogPreview');
       if (prev) { prev.src = s.ogImage; prev.style.display = 'block'; }
     }
+    if (s.faviconUrl) {
+      const fp  = document.getElementById('faviconPreview');
+      const txt = document.getElementById('faviconUploadText');
+      if (fp)  { fp.src = s.faviconUrl; fp.style.display = 'block'; }
+      if (txt) txt.style.display = 'none';
+    }
     updateSeoPreview();
     generateMetaTags();
   } catch (e) { console.warn('SEO fetch failed', e); }
@@ -1636,6 +1641,61 @@ document.getElementById('saveSeoBtn')?.addEventListener('click', async () => {
   }
   setTimeout(() => btn.textContent = 'Save Changes', 2000);
 });
+
+// Favicon upload
+document.getElementById('faviconInput')?.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const fp = document.getElementById('faviconPreview');
+  const txt = document.getElementById('faviconUploadText');
+  if (fp) { fp.src = URL.createObjectURL(file); fp.style.display = 'block'; }
+  if (txt) txt.style.display = 'none';
+});
+
+document.getElementById('saveFaviconBtn')?.addEventListener('click', async () => {
+  const btn      = document.getElementById('saveFaviconBtn');
+  const statusEl = document.getElementById('faviconStatus');
+  const file = document.getElementById('faviconInput')?.files[0];
+  if (!file) { statusEl.textContent = 'Please select an image first.'; return; }
+  btn.textContent = 'Uploading…';
+  btn.disabled = true;
+  statusEl.textContent = '';
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    const saved = await api('PUT', '/seo?type=favicon', fd, true);
+    if (saved.faviconUrl) {
+      const fp = document.getElementById('faviconPreview');
+      if (fp) { fp.src = saved.faviconUrl; fp.style.display = 'block'; }
+    }
+    toast('Favicon saved!');
+    statusEl.textContent = '✓ Favicon uploaded successfully.';
+    document.getElementById('faviconInput').value = '';
+  } catch (e) {
+    toast(e.message, 'error');
+    statusEl.textContent = '✗ ' + e.message;
+  } finally {
+    btn.textContent = 'Upload Favicon';
+    btn.disabled = false;
+  }
+});
+
+// Load SMTP settings when SEO section opens
+async function loadSmtpIntoSeo() {
+  const statusEl = document.getElementById('smtpStatus');
+  if (!statusEl) return;
+  statusEl.textContent = 'Loading…';
+  try {
+    const data = await api('GET', '/settings/smtp');
+    document.getElementById('smtpUser').value     = data.gmailUser || '';
+    document.getElementById('smtpAdminUrl').value = data.adminUrl  || '';
+    const hint = document.getElementById('smtpPassHint');
+    if (hint) hint.textContent = data.hasPassword ? 'App password is saved. Leave blank to keep unchanged.' : 'No app password saved yet.';
+    statusEl.textContent = '';
+  } catch (e) {
+    statusEl.textContent = 'Failed to load SMTP: ' + e.message;
+  }
+}
 
 // ══════════════════════════════════════════════
 // ANALYTICS PANEL
@@ -2084,23 +2144,6 @@ async function deleteMessage(id) {
   }
 }
 
-// ══════════════════════════════════════════════════════
-// SETTINGS
-// ══════════════════════════════════════════════════════
-async function loadSettings() {
-  const statusEl = document.getElementById('smtpStatus');
-  statusEl.textContent = 'Loading…';
-  try {
-    const data = await api('GET', '/settings/smtp');
-    document.getElementById('smtpUser').value     = data.gmailUser || '';
-    document.getElementById('smtpAdminUrl').value = data.adminUrl  || '';
-    const hint = document.getElementById('smtpPassHint');
-    hint.textContent = data.hasPassword ? 'App password is saved. Leave blank to keep unchanged.' : 'No app password saved yet.';
-    statusEl.textContent = '';
-  } catch (e) {
-    statusEl.textContent = 'Failed to load: ' + e.message;
-  }
-}
 
 document.getElementById('saveSmtpBtn')?.addEventListener('click', async () => {
   const btn      = document.getElementById('saveSmtpBtn');

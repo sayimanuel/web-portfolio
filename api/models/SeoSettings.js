@@ -12,6 +12,8 @@ const seoSchema = new mongoose.Schema({
   projectsDesc:  { type: String, default: '' },
   ogImage:       { type: String, default: '' },
   ogImageId:     { type: String, default: '' },
+  faviconUrl:    { type: String, default: '' },
+  faviconId:     { type: String, default: '' },
   noIndex:       { type: Boolean, default: false },
 }, { timestamps: true });
 

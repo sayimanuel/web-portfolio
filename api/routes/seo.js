@@ -11,16 +11,25 @@ router.get('/', async (req, res) => {
   } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
-// PUT /api/seo — admin
-router.put('/', auth, upload.single('ogImage'), async (req, res) => {
+// PUT /api/seo — admin (handles ogImage OR favicon via ?type=favicon)
+router.put('/', auth, upload.single('image'), async (req, res) => {
   try {
     const data = { ...req.body };
     if (data.noIndex !== undefined) data.noIndex = data.noIndex === 'true';
+
     if (req.file) {
-      const old = await Seo.findOne();
-      if (old?.ogImageId) await cloudinary.uploader.destroy(old.ogImageId).catch(() => {});
-      data.ogImage   = req.file.path;
-      data.ogImageId = req.file.filename;
+      const old  = await Seo.findOne();
+      const type = req.query.type; // 'favicon' or 'og'
+
+      if (type === 'favicon') {
+        if (old?.faviconId) await cloudinary.uploader.destroy(old.faviconId).catch(() => {});
+        data.faviconUrl = req.file.path;
+        data.faviconId  = req.file.filename;
+      } else {
+        if (old?.ogImageId) await cloudinary.uploader.destroy(old.ogImageId).catch(() => {});
+        data.ogImage   = req.file.path;
+        data.ogImageId = req.file.filename;
+      }
     }
     const s = await Seo.findOneAndUpdate({}, data, { new: true, upsert: true });
     res.json(s);

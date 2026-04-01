@@ -367,7 +367,31 @@ async function loadProfile() {
 
 // ── INIT ──
 
+// ── FAVICON (from SEO settings) ──
+async function applyFavicon() {
+  try {
+    const seo = await get('/seo');
+    if (!seo?.faviconUrl) return;
+
+    // Remove existing favicon links
+    document.querySelectorAll('link[rel*="icon"]').forEach(el => el.remove());
+
+    // Inject PNG favicon + apple-touch-icon (Chrome needs raster, not just SVG)
+    const fav = document.createElement('link');
+    fav.rel  = 'icon';
+    fav.type = 'image/png';
+    fav.href = seo.faviconUrl;
+    document.head.appendChild(fav);
+
+    const apple = document.createElement('link');
+    apple.rel  = 'apple-touch-icon';
+    apple.href = seo.faviconUrl;
+    document.head.appendChild(apple);
+  } catch { /* keep default favicon.svg */ }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  applyFavicon();
   loadFeaturedProjects();
   loadAllProjects();
   loadTestimonials();

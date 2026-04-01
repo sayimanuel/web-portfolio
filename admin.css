@@ -2219,6 +2219,8 @@ html.light .msg-admin-reply { border-top-color: rgba(0,0,0,0.08); }
 html.light .settings-howto { color: rgba(0,0,0,0.6); }
 html.light .settings-howto li strong { color: rgba(0,0,0,0.85); }
 #smtpStatus { min-height: 16px; font-size: 12px; }
+#faviconStatus { min-height: 16px; font-size: 12px; }
+.favicon-upload-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
 /* ── Geo Analytics ── */
 .an-geo-list { display: flex; flex-direction: column; gap: 8px; }
