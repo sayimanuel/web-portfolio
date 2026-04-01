@@ -230,7 +230,7 @@ function makeProjectCard(p) {
       <button class="btn-danger" data-id="${p._id}">Delete</button>
     </div>`;
   card.querySelector('.btn-edit').addEventListener('click',   () => openProjectForm(p));
-  card.querySelector('.btn-danger').addEventListener('click', () => deleteProject(p._id, p.title));
+  card.querySelector('.btn-danger').addEventListener('click', (e) => deleteProject(p._id, p.title, e.currentTarget));
   return card;
 }
 
@@ -972,13 +972,17 @@ function openProjectForm(p = null) {
   });
 }
 
-async function deleteProject(id, title) {
+async function deleteProject(id, title, btn) {
   if (!confirm(`Delete "${title}"?`)) return;
+  if (btn) { btn.textContent = 'Deleting…'; btn.disabled = true; }
   try {
     await api('DELETE', '/projects/' + id);
     toast('Project deleted');
     fetchProjects();
-  } catch (ex) { toast(ex.message, 'error'); }
+  } catch (ex) {
+    toast(ex.message, 'error');
+    if (btn) { btn.textContent = 'Delete'; btn.disabled = false; }
+  }
 }
 
 document.getElementById('addProjectBtn').addEventListener('click', () => openProjectForm());
@@ -1021,15 +1025,17 @@ function renderTestimonials() {
         ${!t.approved ? `<button class="btn-approve" data-id="${esc(t._id)}">Approve</button>` : ''}
         <button class="btn-danger" data-id="${esc(t._id)}">Delete</button>
       </td>`;
-    tr.querySelector('.btn-danger').addEventListener('click', async () => {
+    tr.querySelector('.btn-danger').addEventListener('click', async function() {
       if (!confirm('Delete this review?')) return;
+      this.textContent = 'Deleting…'; this.disabled = true;
       try { await api('DELETE', '/testimonials/' + t._id); toast('Deleted'); fetchTestimonials(); }
-      catch (ex) { toast(ex.message, 'error'); }
+      catch (ex) { toast(ex.message, 'error'); this.textContent = 'Delete'; this.disabled = false; }
     });
     const appBtn = tr.querySelector('.btn-approve');
-    if (appBtn) appBtn.addEventListener('click', async () => {
+    if (appBtn) appBtn.addEventListener('click', async function() {
+      this.textContent = 'Approving…'; this.disabled = true;
       try { await api('PATCH', '/testimonials/' + t._id + '/approve'); toast('Approved!'); fetchTestimonials(); }
-      catch (ex) { toast(ex.message, 'error'); }
+      catch (ex) { toast(ex.message, 'error'); this.textContent = 'Approve'; this.disabled = false; }
     });
     tbody.appendChild(tr);
   });
@@ -1069,7 +1075,7 @@ async function fetchExperience() {
           <button class="btn-danger" data-id="${esc(item._id)}">Delete</button>
         </td>`;
       tr.querySelector('.btn-edit').addEventListener('click',   () => openExpForm(item));
-      tr.querySelector('.btn-danger').addEventListener('click', () => deleteExp(item._id));
+      tr.querySelector('.btn-danger').addEventListener('click', (e) => deleteExp(item._id, e.currentTarget));
       tbody.appendChild(tr);
     });
   } catch { toast('Failed to load experience', 'error'); }
@@ -1160,10 +1166,11 @@ async function openExpForm(item = null) {
   });
 }
 
-async function deleteExp(id) {
+async function deleteExp(id, btn) {
   if (!confirm('Delete this experience?')) return;
+  if (btn) { btn.textContent = 'Deleting…'; btn.disabled = true; }
   try { await api('DELETE', '/experience/' + id); toast('Deleted'); fetchExperience(); }
-  catch (ex) { toast(ex.message, 'error'); }
+  catch (ex) { toast(ex.message, 'error'); if (btn) { btn.textContent = 'Delete'; btn.disabled = false; } }
 }
 
 document.getElementById('addExpBtn').addEventListener('click', () => openExpForm());
@@ -1222,10 +1229,11 @@ function renderSkills() {
     const el = document.createElement('div');
     el.className = 'skill-pill-admin';
     el.innerHTML = `<span class="cat-dot cat-${esc(s.category)}"></span>${esc(s.name)}<button class="skill-del-btn" title="Delete"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>`;
-    el.querySelector('.skill-del-btn').addEventListener('click', async () => {
+    el.querySelector('.skill-del-btn').addEventListener('click', async function() {
       if (!confirm(`Delete "${s.name}"?`)) return;
+      this.disabled = true;
       try { await api('DELETE', '/skills/' + s._id); toast('Deleted'); fetchSkills(); }
-      catch (ex) { toast(ex.message, 'error'); }
+      catch (ex) { toast(ex.message, 'error'); this.disabled = false; }
     });
     grid.appendChild(el);
   });
@@ -1378,6 +1386,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async () => 
   const btn  = document.getElementById('saveProfileBtn');
   const form = document.getElementById('profileForm');
   btn.textContent = 'Saving...';
+  btn.disabled = true;
   try {
     const fd = new FormData();
     ['name','email','tagline','bio','linkedin','instagram','whatsapp'].forEach(k => {
@@ -1388,7 +1397,7 @@ document.getElementById('saveProfileBtn').addEventListener('click', async () => 
     await api('PUT', '/profile', fd, true);
     toast('Profile saved!');
   } catch (ex) { toast(ex.message, 'error'); }
-  finally { btn.textContent = 'Save Changes'; }
+  finally { btn.textContent = 'Save Changes'; btn.disabled = false; }
 });
 
 // ══════════════════════════════════════════════════════
@@ -1423,28 +1432,32 @@ async function fetchSubmissions() {
             <button class="btn-danger btn-reject" data-id="${esc(p._id)}">Reject</button>
           </div>
         </td>`;
-      tr.querySelector('.btn-approve').addEventListener('click', () => approveSubmission(p._id));
-      tr.querySelector('.btn-reject').addEventListener('click',  () => rejectSubmission(p._id, p.title));
+      tr.querySelector('.btn-approve').addEventListener('click', (e) => approveSubmission(p._id, e.currentTarget));
+      tr.querySelector('.btn-reject').addEventListener('click',  (e) => rejectSubmission(p._id, p.title, e.currentTarget));
       tbody.appendChild(tr);
     });
   } catch { toast('Failed to load submissions', 'error'); }
 }
 
-async function approveSubmission(id) {
+async function approveSubmission(id, btn) {
   if (!confirm('Approve this submission and publish it?')) return;
+  if (btn) { btn.textContent = 'Approving…'; btn.disabled = true; }
   try {
     await api('PATCH', '/projects/' + id + '/approve');
     toast('Project published!');
     fetchSubmissions();
-    // Refresh badge
     const pending = await api('GET', '/projects/pending');
     const badge = document.getElementById('submissionsBadge');
     if (badge) { badge.textContent = pending.length; badge.style.display = pending.length ? '' : 'none'; }
-  } catch (ex) { toast(ex.message, 'error'); }
+  } catch (ex) {
+    toast(ex.message, 'error');
+    if (btn) { btn.textContent = 'Approve'; btn.disabled = false; }
+  }
 }
 
-async function rejectSubmission(id, title) {
+async function rejectSubmission(id, title, btn) {
   if (!confirm('Reject and delete "' + title + '"? This cannot be undone.')) return;
+  if (btn) { btn.textContent = 'Rejecting…'; btn.disabled = true; }
   try {
     await api('PATCH', '/projects/' + id + '/reject');
     toast('Submission rejected.');
@@ -1452,7 +1465,10 @@ async function rejectSubmission(id, title) {
     const pending = await api('GET', '/projects/pending');
     const badge = document.getElementById('submissionsBadge');
     if (badge) { badge.textContent = pending.length; badge.style.display = pending.length ? '' : 'none'; }
-  } catch (ex) { toast(ex.message, 'error'); }
+  } catch (ex) {
+    toast(ex.message, 'error');
+    if (btn) { btn.textContent = 'Reject'; btn.disabled = false; }
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -1614,6 +1630,7 @@ document.getElementById('seoCopyBtn')?.addEventListener('click', () => {
 document.getElementById('saveSeoBtn')?.addEventListener('click', async () => {
   const btn = document.getElementById('saveSeoBtn');
   btn.textContent = 'Saving...';
+  btn.disabled = true;
   try {
     const fd = new FormData();
     const append = (k, id) => { const el = document.getElementById(id); if (el) fd.append(k, el.value || ''); };
@@ -1637,8 +1654,10 @@ document.getElementById('saveSeoBtn')?.addEventListener('click', async () => {
   } catch (e) {
     toast(e.message, 'error');
     btn.textContent = 'Save Changes';
+    btn.disabled = false;
     return;
   }
+  btn.disabled = false;
   setTimeout(() => btn.textContent = 'Save Changes', 2000);
 });
 
@@ -1665,6 +1684,7 @@ document.getElementById('saveFaviconBtn')?.addEventListener('click', async () =>
     fd.append('image', file);
     const saved = await api('PUT', '/seo?type=favicon', fd, true);
     if (saved.faviconUrl) {
+      _seoData = saved; // keep _seoData in sync so subsequent SEO saves don't lose it
       const fp = document.getElementById('faviconPreview');
       if (fp) { fp.src = saved.faviconUrl; fp.style.display = 'block'; }
     }
@@ -1897,15 +1917,17 @@ async function fetchAnGeo() {
 document.getElementById('anSuggestFeatureBtn')?.addEventListener('click', async () => {
   if (!_topProjectId) return;
   const btn = document.getElementById('anSuggestFeatureBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
   try {
-    btn.textContent = 'Saving…';
     await api('PUT', `/projects/${_topProjectId}`, { featured: true });
     btn.textContent = 'Done ✓';
     toast('Project set as featured!');
-    setTimeout(() => { btn.textContent = 'Set as Featured'; }, 2000);
+    setTimeout(() => { btn.textContent = 'Set as Featured'; btn.disabled = false; }, 2000);
   } catch (e) {
     toast(e.message, 'error');
     btn.textContent = 'Set as Featured';
+    btn.disabled = false;
   }
 });
 
@@ -2106,41 +2128,45 @@ function renderMessages() {
         <span class="msg-admin-name">${esc(m.name)}</span>
         <span class="msg-admin-phone">${esc(m.phone)}</span>
         <span class="msg-admin-date">${new Date(m.createdAt).toLocaleString('id-ID')}</span>
-        <button class="msg-admin-del" onclick="deleteMessage('${esc(m._id)}')">Delete</button>
+        <button class="msg-admin-del" onclick="deleteMessage('${esc(m._id)}', this)">Delete</button>
       </div>
       <p class="msg-admin-text">${esc(m.message)}</p>
       ${m.isAnswered
         ? `<div class="msg-admin-answered"><span class="msg-admin-answered-label">Your answer:</span><p class="msg-admin-answer-text">${esc(m.answer)}</p></div>`
         : `<div class="msg-admin-reply">
             <textarea class="admin-input msg-admin-textarea" id="ans-${esc(m._id)}" placeholder="Type your answer…" rows="3"></textarea>
-            <button class="btn-primary msg-admin-send" onclick="answerMessage('${esc(m._id)}')">Send Answer</button>
+            <button class="btn-primary msg-admin-send" onclick="answerMessage('${esc(m._id)}', this)">Send Answer</button>
            </div>`
       }
     </div>
   `).join('');
 }
 
-async function answerMessage(id) {
+async function answerMessage(id, btn) {
   const textarea = document.getElementById('ans-' + id);
   const answer = textarea ? textarea.value.trim() : '';
-  if (!answer) { toast('Please type an answer first.', 'error'); return; }
+  if (!answer) { toast('Ketik jawaban terlebih dahulu.', 'error'); return; }
+  if (btn) { btn.textContent = 'Sending…'; btn.disabled = true; }
   try {
     await api('PUT', `/messages/${id}/answer`, { answer });
     toast('Answer sent!');
     await loadMessages();
   } catch (e) {
     toast(e.message, 'error');
+    if (btn) { btn.textContent = 'Send Answer'; btn.disabled = false; }
   }
 }
 
-async function deleteMessage(id) {
+async function deleteMessage(id, btn) {
   if (!confirm('Delete this message?')) return;
+  if (btn) { btn.textContent = 'Deleting…'; btn.disabled = true; }
   try {
     await api('DELETE', `/messages/${id}`);
     toast('Message deleted.');
     await loadMessages();
   } catch (e) {
     toast(e.message, 'error');
+    if (btn) { btn.textContent = 'Delete'; btn.disabled = false; }
   }
 }
 

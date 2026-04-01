@@ -31,7 +31,7 @@ router.put('/', auth, upload.single('image'), async (req, res) => {
         data.ogImageId = req.file.filename;
       }
     }
-    const s = await Seo.findOneAndUpdate({}, data, { new: true, upsert: true });
+    const s = await Seo.findOneAndUpdate({}, { $set: data }, { new: true, upsert: true });
     res.json(s);
   } catch { res.status(400).json({ error: 'Invalid request' }); }
 });
