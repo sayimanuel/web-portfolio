@@ -1644,6 +1644,9 @@ document.getElementById('saveSeoBtn')?.addEventListener('click', async () => {
     append('projectsTitle', 'seoProjectsTitle');
     append('projectsDesc',  'seoProjectsDesc');
     fd.append('noIndex', document.getElementById('seoNoIndex')?.checked ? 'true' : 'false');
+    // Explicitly re-send favicon fields so they're never accidentally cleared
+    if (_seoData?.faviconUrl) fd.append('faviconUrl', _seoData.faviconUrl);
+    if (_seoData?.faviconId)  fd.append('faviconId',  _seoData.faviconId);
     const file = document.getElementById('ogImageInput')?.files[0];
     if (file) fd.append('ogImage', file);
     const saved = await api('PUT', '/seo', fd, true);
@@ -1687,10 +1690,13 @@ document.getElementById('saveFaviconBtn')?.addEventListener('click', async () =>
       _seoData = saved; // keep _seoData in sync so subsequent SEO saves don't lose it
       const fp = document.getElementById('faviconPreview');
       if (fp) { fp.src = saved.faviconUrl; fp.style.display = 'block'; }
+      toast('Favicon saved!');
+      statusEl.textContent = '✓ Favicon uploaded successfully.';
+      document.getElementById('faviconInput').value = '';
+    } else {
+      // Server returned 200 but without a faviconUrl — file likely didn't upload to Cloudinary
+      throw new Error('Favicon URL missing in server response. Cloudinary upload may have failed — please try again.');
     }
-    toast('Favicon saved!');
-    statusEl.textContent = '✓ Favicon uploaded successfully.';
-    document.getElementById('faviconInput').value = '';
   } catch (e) {
     toast(e.message, 'error');
     statusEl.textContent = '✗ ' + e.message;
