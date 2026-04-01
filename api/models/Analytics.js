@@ -7,12 +7,18 @@ const schema = new mongoose.Schema({
   referrer:  { type: String, default: '' },
   sessionId: { type: String, default: '' },
   visitorId: { type: String, default: '' }, // permanent per-browser UUID
-  isNew:     { type: Boolean, default: true }, // set by server, not client
+  isNew:     { type: Boolean, default: true }, // set by server
+  // Geo (from IP lookup — raw IP never stored)
+  country:   { type: String, default: '' },
+  city:      { type: String, default: '' },
+  region:    { type: String, default: '' },
+  isp:       { type: String, default: '' },
 }, { timestamps: true });
 
 schema.index({ event: 1, createdAt: -1 });
 schema.index({ projectId: 1, event: 1 });
 schema.index({ sessionId: 1 });
 schema.index({ visitorId: 1 });
+schema.index({ country: 1 });
 
 module.exports = mongoose.model('Analytics', schema);

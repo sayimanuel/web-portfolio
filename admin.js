@@ -1658,7 +1658,7 @@ function anTrend(pct) {
 
 async function fetchAnalytics() {
   _anRange = parseInt(document.getElementById('analyticsRange')?.value) || 7;
-  await Promise.all([fetchAnSummary(), fetchAnFunnel(), fetchAnSources(), fetchAnProjects(), fetchAnActivity(), fetchAnSparkline()]);
+  await Promise.all([fetchAnSummary(), fetchAnFunnel(), fetchAnSources(), fetchAnProjects(), fetchAnActivity(), fetchAnSparkline(), fetchAnGeo()]);
 }
 
 async function fetchAnSummary() {
@@ -1806,6 +1806,31 @@ async function fetchAnSparkline() {
       return `<div class="spark-bar" style="height:${h}%" title="${d.label}: ${d.count} views"></div>`;
     }).join('');
   } catch (e) {}
+}
+
+async function fetchAnGeo() {
+  try {
+    const data = await api('GET', `/analytics/geo?days=${_anRange}`);
+
+    function renderGeoList(elId, items) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      if (!items.length) { el.innerHTML = '<p class="an-empty">No data yet.</p>'; return; }
+      const max = items[0].count || 1;
+      el.innerHTML = items.map(item => `
+        <div class="an-geo-row">
+          <span class="an-geo-name">${esc(item.name || '—')}</span>
+          <div class="an-geo-bar-wrap">
+            <div class="an-geo-bar" style="width:${Math.round(item.count / max * 100)}%"></div>
+          </div>
+          <span class="an-geo-count">${item.count}</span>
+        </div>`).join('');
+    }
+
+    renderGeoList('anGeoCountries', data.countries || []);
+    renderGeoList('anGeoCities',    data.cities    || []);
+    renderGeoList('anGeoIsps',      data.isps      || []);
+  } catch (e) { console.warn('analytics geo', e); }
 }
 
 // "Set as Featured" button in suggestion banner

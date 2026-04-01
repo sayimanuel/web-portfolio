@@ -2219,3 +2219,14 @@ html.light .msg-admin-reply { border-top-color: rgba(0,0,0,0.08); }
 html.light .settings-howto { color: rgba(0,0,0,0.6); }
 html.light .settings-howto li strong { color: rgba(0,0,0,0.85); }
 #smtpStatus { min-height: 16px; font-size: 12px; }
+
+/* ── Geo Analytics ── */
+.an-geo-list { display: flex; flex-direction: column; gap: 8px; }
+.an-geo-row  { display: flex; align-items: center; gap: 8px; }
+.an-geo-name { font-size: 12px; color: rgba(255,255,255,0.75); min-width: 110px; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-geo-bar-wrap { flex: 1; height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; overflow: hidden; }
+.an-geo-bar  { height: 100%; background: linear-gradient(90deg, #6633ff, #E8F55F); border-radius: 3px; transition: width 0.5s ease; }
+.an-geo-count { font-size: 11px; color: rgba(255,255,255,0.4); min-width: 24px; text-align: right; }
+html.light .an-geo-name  { color: rgba(0,0,60,0.75); }
+html.light .an-geo-bar-wrap { background: rgba(0,0,0,0.07); }
+html.light .an-geo-count { color: rgba(0,0,60,0.4); }

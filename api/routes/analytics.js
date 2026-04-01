@@ -1,6 +1,7 @@
 const router    = require('express').Router();
 const Analytics = require('../models/Analytics');
 const auth      = require('../middleware/auth');
+const { getGeo } = require('../services/geo');
 
 // POST /api/analytics/track — public
 router.post('/track', async (req, res) => {
@@ -8,13 +9,14 @@ router.post('/track', async (req, res) => {
     const { event, page, projectId, referrer, sessionId, visitorId } = req.body;
     if (!event) return res.status(400).json({ error: 'event required' });
 
-    // Server determines isNew — has this visitorId ever been seen before?
     const safeVid = visitorId ? String(visitorId).replace(/[^a-z0-9\-]/gi, '').slice(0, 64) : '';
-    let isNew = true;
-    if (safeVid) {
-      const seen = await Analytics.exists({ visitorId: safeVid });
-      isNew = !seen;
-    }
+
+    // Run isNew check + geo lookup in parallel
+    const [seen, geo] = await Promise.all([
+      safeVid ? Analytics.exists({ visitorId: safeVid }) : Promise.resolve(true),
+      getGeo(req),
+    ]);
+    const isNew = !seen;
 
     await Analytics.create({
       event,
@@ -24,6 +26,10 @@ router.post('/track', async (req, res) => {
       sessionId: sessionId ? String(sessionId).slice(0, 64)  : '',
       visitorId: safeVid,
       isNew,
+      country: geo.country,
+      city:    geo.city,
+      region:  geo.region,
+      isp:     geo.isp,
     });
     res.json({ ok: true });
   } catch { res.status(400).json({ error: 'Invalid request' }); }
@@ -117,6 +123,38 @@ router.get('/projects', auth, async (req, res) => {
     });
 
     res.json(result);
+  } catch { res.status(500).json({ error: 'Internal server error' }); }
+});
+
+// GET /api/analytics/geo?days=7 — admin (top countries, cities, ISPs)
+router.get('/geo', auth, async (req, res) => {
+  try {
+    const days  = parseInt(req.query.days) || 7;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const [countries, cities, isps] = await Promise.all([
+      Analytics.aggregate([
+        { $match: { event: 'pageview', country: { $ne: '' }, createdAt: { $gte: since } } },
+        { $group: { _id: '$country', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }, { $limit: 10 },
+      ]),
+      Analytics.aggregate([
+        { $match: { event: 'pageview', city: { $ne: '' }, createdAt: { $gte: since } } },
+        { $group: { _id: { city: '$city', country: '$country' }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } }, { $limit: 8 },
+      ]),
+      Analytics.aggregate([
+        { $match: { event: 'pageview', isp: { $ne: '' }, createdAt: { $gte: since } } },
+        { $group: { _id: '$isp', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }, { $limit: 6 },
+      ]),
+    ]);
+
+    res.json({
+      countries: countries.map(c => ({ name: c._id, count: c.count })),
+      cities:    cities.map(c => ({ name: `${c._id.city}, ${c._id.country}`, count: c.count })),
+      isps:      isps.map(c => ({ name: c._id, count: c.count })),
+    });
   } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
